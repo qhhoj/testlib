@@ -25,7 +25,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.45"
+#define VERSION "0.9.46"
 
 /*
  * Mike Mirzayanov
@@ -63,6 +63,11 @@
  */
 
 const char *latestFeatures[] = {
+        "Fixed the scorer API: registerScorer now marks itself registered (a scorer used to "
+                "abort with 'Call register-function in the first line of the main'), scoring runs "
+                "from registerScorer instead of a static destructor, serializeVerdict no longer "
+                "throws a raw const char*, TestResult fields are validated on deserialization, and "
+                "escapeTestResultString no longer silently drops CR",
         "Remove incorrect const attributes",
         "Added ConstantBoundsLog, VariablesLog to validator testOverviewLogFile",
         "Use setAppesModeEncoding to change xml encoding from windows-1251 to other",
@@ -5931,7 +5936,7 @@ std::string serializeVerdict(TestResultVerdict verdict) {
         case CRASHED: return "CRASHED";
         case FAILED: return "FAILED";
     }
-    throw "Unexpected verdict";
+    __testlib_fail("serializeVerdict: unexpected TestResultVerdict value " + vtos(int(verdict)));
 }
 
 TestResultVerdict deserializeTestResultVerdict(std::string s) {
@@ -5988,22 +5993,46 @@ std::string serializePoints(double points) {
 double deserializePoints(std::string s) {
     if (s.empty())
         return std::numeric_limits<double>::quiet_NaN();
-    else {
-        double result;
-#ifdef _MSC_VER
-        ensuref(sscanf_s(s.c_str(), "%lf", &result) == 1, "Invalid serialized points");
-#else
-        ensuref(std::sscanf(s.c_str(), "%lf", &result) == 1, "Invalid serialized points");
-#endif
-        return result;
-    }                                              
+
+    /* Accept exactly what serializePoints emits: [-]digits[.digits]. In
+       particular reject "nan", "inf", hex floats, exponents and trailing
+       garbage, all of which std::sscanf("%lf") would happily accept. */
+    size_t pos = (s[0] == '-' ? 1 : 0);
+    size_t intDigits = 0, fracDigits = 0;
+    while (pos < s.length() && s[pos] >= '0' && s[pos] <= '9')
+        pos++, intDigits++;
+    if (pos < s.length() && s[pos] == '.') {
+        pos++;
+        while (pos < s.length() && s[pos] >= '0' && s[pos] <= '9')
+            pos++, fracDigits++;
+    }
+    ensuref(intDigits > 0 && pos == s.length(),
+            "Invalid serialized points: '%s'", compress(s).c_str());
+    (void) fracDigits;
+
+    double result = 0.0;
+    try {
+        result = std::stod(s);
+    } catch (const std::exception &) {
+        ensuref(false, "Invalid serialized points, value out of range: '%s'", compress(s).c_str());
+    } catch (...) {
+        ensuref(false, "Invalid serialized points, value out of range: '%s'", compress(s).c_str());
+    }
+
+    ensuref(!__testlib_isNaN(result) && !__testlib_isInfinite(result),
+            "Invalid serialized points, must be finite: '%s'", compress(s).c_str());
+    ensuref(result >= -1E-8 && result <= 1E6 + 1E-8,
+            "Invalid serialized points, must be in [0, 1E6]: '%s'", compress(s).c_str());
+    return result;
 }
 
 std::string escapeTestResultString(std::string s) {
     std::string result;
     for (size_t i = 0; i < s.length(); i++) {
-        if (s[i] == '\r')
+        if (s[i] == '\r') {
+            result += "\\r";
             continue;
+        }
         if (s[i] == '\n') {
             result += "\\n";
             continue;
@@ -6021,6 +6050,10 @@ std::string unescapeTestResultString(std::string s) {
         if (s[i] == '\\' && i + 1 < s.length()) {
             if (s[i + 1] == 'n') {
                 result += '\n';
+                i++;
+                continue;
+            } else if (s[i + 1] == 'r') {
+                result += '\r';
                 i++;
                 continue;
             } else if (s[i + 1] == ';' || s[i + 1] == '\\') {
@@ -6062,6 +6095,41 @@ std::string serializeTestResult(TestResult tr) {
     return result;
 }
 
+/*
+ * Parses one integral field of a serialized TestResult. Unlike std::stoi /
+ * std::stoll this never throws out of the caller: malformed or out-of-range
+ * input becomes a clean FAIL instead of an uncaught exception.
+ */
+static long long __testlib_deserializeTestResultInteger(const std::string &s, const char *fieldName,
+                                                        long long minValue, long long maxValue) {
+    ensuref(!s.empty(), "Invalid TestResult serialization: %s is empty", fieldName);
+
+    size_t start = (s[0] == '-' ? 1 : 0);
+    ensuref(s.length() > start && s.length() - start <= 19,
+            "Invalid TestResult serialization: expected integer %s but '%s' found",
+            fieldName, compress(s).c_str());
+    for (size_t i = start; i < s.length(); i++)
+        ensuref(s[i] >= '0' && s[i] <= '9',
+                "Invalid TestResult serialization: expected integer %s but '%s' found",
+                fieldName, compress(s).c_str());
+
+    long long result = 0;
+    try {
+        result = std::stoll(s);
+    } catch (const std::exception &) {
+        ensuref(false, "Invalid TestResult serialization: %s value '%s' is out of range",
+                fieldName, compress(s).c_str());
+    } catch (...) {
+        ensuref(false, "Invalid TestResult serialization: %s value '%s' is out of range",
+                fieldName, compress(s).c_str());
+    }
+
+    ensuref(result >= minValue && result <= maxValue,
+            "Invalid TestResult serialization: %s equals to %s, violates the range [%s, %s]",
+            fieldName, vtos(result).c_str(), vtos(minValue).c_str(), vtos(maxValue).c_str());
+    return result;
+}
+
 TestResult deserializeTestResult(std::string s) {
     std::vector<std::string> items;
     std::string t;
@@ -6086,17 +6154,17 @@ TestResult deserializeTestResult(std::string s) {
     
     TestResult tr;
     size_t pos = 0;
-    tr.testIndex = stoi(items[pos++]);
+    tr.testIndex = int(__testlib_deserializeTestResultInteger(items[pos++], "testIndex", 0, INT_MAX));
     tr.testset = unescapeTestResultString(items[pos++]);
     tr.group = unescapeTestResultString(items[pos++]);
     tr.verdict = deserializeTestResultVerdict(items[pos++]);
     tr.points = deserializePoints(items[pos++]);
-    tr.timeConsumed = stoll(items[pos++]);
-    tr.memoryConsumed = stoll(items[pos++]);
+    tr.timeConsumed = __testlib_deserializeTestResultInteger(items[pos++], "timeConsumed", 0, __TESTLIB_LONGLONG_MAX);
+    tr.memoryConsumed = __testlib_deserializeTestResultInteger(items[pos++], "memoryConsumed", 0, __TESTLIB_LONGLONG_MAX);
     tr.input = unescapeTestResultString(items[pos++]);
     tr.output = unescapeTestResultString(items[pos++]);
     tr.answer = unescapeTestResultString(items[pos++]);
-    tr.exitCode = stoi(items[pos++]);
+    tr.exitCode = int(__testlib_deserializeTestResultInteger(items[pos++], "exitCode", INT_MIN, INT_MAX));
     tr.checkerComment = unescapeTestResultString(items[pos++]);
     
     return tr;
@@ -6116,19 +6184,35 @@ std::vector<TestResult> readTestResults(std::string fileName) {
 }
 
 std::function<double(std::vector<TestResult>)> __testlib_scorer;
+bool __testlib_scorerFinalized = false;
 
+/*
+ * Reads the serialized test results, runs the scorer and prints the score.
+ *
+ * Called from registerScorer, i.e. from normal control flow, so that a
+ * malformed input file can fail cleanly. Doing this from a destructor would
+ * route __testlib_fail into std::exit during static destruction, which is
+ * undefined behaviour.
+ */
+static void __testlib_finalizeScorer() {
+    if (testlibMode != _scorer || __testlib_scorerFinalized)
+        return;
+    __testlib_scorerFinalized = true;
+
+    std::vector<TestResult> testResults;
+    while (!inf.eof()) {
+        std::string line = inf.readLine();
+        if (!line.empty())
+            testResults.push_back(deserializeTestResult(line));
+    }
+    inf.readEof();
+    printf("%.3f\n", __testlib_scorer(testResults));
+}
+
+/* Safety net only: normally the work has already happened in registerScorer. */
 struct TestlibScorerGuard {
     ~TestlibScorerGuard() {
-        if (testlibMode == _scorer) {
-            std::vector<TestResult> testResults;
-            while (!inf.eof()) {
-                std::string line = inf.readLine();
-                if (!line.empty())
-                    testResults.push_back(deserializeTestResult(line));
-            }
-            inf.readEof();
-            printf("%.3f\n", __testlib_scorer(testResults));
-        }
+        __testlib_finalizeScorer();
     }
 } __testlib_scorer_guard;
 
@@ -6137,6 +6221,7 @@ void registerScorer(int argc, char *argv[], std::function<double(std::vector<Tes
     (void)(argc), (void)(argv);
 
     __testlib_ensuresPreconditions();
+    TestlibFinalizeGuard::registered = true;
 
     testlibMode = _scorer;
     __testlib_set_binary(stdin);
@@ -6145,6 +6230,7 @@ void registerScorer(int argc, char *argv[], std::function<double(std::vector<Tes
     inf.strict = false;
 
     __testlib_scorer = scorer;
+    __testlib_finalizeScorer();
 }
 
 /* Scorer ended. */

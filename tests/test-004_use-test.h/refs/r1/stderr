@@ -51,3 +51,28 @@ FAIL Expected unsigned integer, but "1 2" found ()
 FAIL Expected unsigned integer, but "-0" found ()
 FAIL Expected unsigned integer, but "--0" found ()
 FAIL Expected unsigned integer, but "-00" found ()
+FAIL pattern: Illegal pattern (or part) "[a-z]{,5}"
+FAIL pattern: Illegal pattern (or part) "ab)(cd)"
+FAIL pattern: Illegal pattern (or part) "ab)x"
+FAIL pattern: Illegal pattern (or part) "a|b)(c|d)"
+FAIL pattern: Illegal pattern (or part) "a|b)xy"
+FAIL Expected double, but "nan" found (based on )
+FAIL Expected strict double, but "1e999" found (based on )
+FAIL Opts: unused key 'sorted'
+FAIL Opts: expected typical exponential notation but 'true' found
+FAIL Opts: unknown key 'missing'
+FAIL Opts: unknown key 'missing'
+FAIL Opts: unknown key 'missing'
+FAIL Unexpected serialized TestResultVerdict
+FAIL Invalid TestResult serialization: expected exactly 12 items
+FAIL Invalid TestResult serialization: expected integer testIndex but 'x' found
+FAIL Invalid serialized points: 'nan'
+FAIL Invalid serialized points: 'inf'
+FAIL Invalid serialized points: '0x10'
+FAIL Invalid serialized points: '1.0abc'
+FAIL Invalid serialized points, must be in [0, 1E6]: '2000000.000'
+FAIL Invalid serialized points, must be in [0, 1E6]: '-1.000'
+FAIL Invalid TestResult serialization: testIndex equals to -1, violates the range [0, 2147483647]
+FAIL Invalid TestResult serialization: timeConsumed equals to -5, violates the range [0, 9223372036854775807]
+FAIL Invalid TestResult serialization: memoryConsumed equals to -5, violates the range [0, 9223372036854775807]
+FAIL Invalid TestResult serialization: expected integer testIndex but '99999999999999999999' found

@@ -1,0 +1,1 @@
+FAIL Invalid TestResult serialization: timeConsumed equals to -5, violates the range [0, 9223372036854775807]

@@ -1,0 +1,8 @@
+tests/
+gen-random
+gen-max-n
+validator
+checker
+sol-correct
+sol-wrong
+*.exe

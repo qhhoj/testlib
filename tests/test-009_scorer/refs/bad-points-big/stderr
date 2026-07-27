@@ -1,0 +1,1 @@
+FAIL Invalid serialized points, must be in [0, 1E6]: '2000000.000'

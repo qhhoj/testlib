@@ -1,0 +1,4 @@
+1;tests;;OK;60.000;12;2048;;;;0;
+2;tests;;WRONG_ANSWER;0.000;15;2048;;;;1;wrong answer 1st numbers differ
+3;tests;;OK;40.500;11;2048;;;;0;
+4;tests;;TIME_LIMIT_EXCEEDED;0.000;2000;2048;;;;0;

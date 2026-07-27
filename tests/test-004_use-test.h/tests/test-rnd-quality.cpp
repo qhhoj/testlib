@@ -1,13 +1,16 @@
 /*
- * Pins the CURRENT (defective) periodicity of the random generator.
+ * Periodicity of the random generator.
  *
- * See plan.md: R-01 (rnd.next(0,1) repeats every 65536 calls) and R-02 (with
- * version 0 the period is 131072 because bit 31 is never set).
+ * Versions 0 and 1 are PERIODIC in their low bits: rnd.next(0, 1) repeats
+ * every 65536 calls under version 1 and every 131072 under version 0, because
+ * nextBits(63) concatenates two draws and hands back the low bits of the
+ * 48-bit LCG state. That is a defect (plan.md R-01, R-02), but those streams
+ * are a compatibility surface -- every existing test package reproduces its
+ * data from them -- so the tests below pin them deliberately and must not be
+ * "fixed".
  *
- * These assertions describe a bug, not desired behaviour. When R-01 is fixed
- * under registerGen(argc, argv, 2), keep these tests for versions 0 and 1 --
- * those streams must stay byte-identical forever -- and add the corresponding
- * "no short period" assertions for version 2.
+ * Version 2 (registerGen(argc, argv, 2)) is the corrected generator and is
+ * asserted to have no such period.
  */
 
 /* True if v[i] == v[i + period] for every valid i. */
@@ -69,6 +72,34 @@ TEST(rnd_periodicity_version_0) {
     std::vector<int> v = rndq_draw(0, 12345, 1, 3 * 131072);
     ensure(rndq_repeatsWith(v, 131072));
     ensure(!rndq_repeatsWith(v, 65536));
+}
+
+TEST(rnd_version_2_has_no_short_period) {
+    /* R-01 fixed: version 2 builds 63-bit draws from 21-bit chunks, taking
+       only the top bits of the state each time, so no result bit comes from a
+       state bit below 27. None of the version-1 periods survive. */
+    std::vector<int> v = rndq_draw(2, 12345, 1, 3 * 65536);
+    ensure(!rndq_repeatsWith(v, 65536));
+    ensure(!rndq_repeatsWith(v, 32768));
+    ensure(!rndq_repeatsWith(v, 131072 / 2));
+
+    /* The ranges that were periodic under version 1 are not under version 2. */
+    ensure(!rndq_repeatsWith(rndq_draw(2, 12345, 3, 3 * 131072), 131072));
+    ensure(!rndq_repeatsWith(rndq_draw(2, 12345, 7, 3 * 262144), 262144));
+
+    /* Still uniform: roughly half the coin flips come up 1. */
+    std::vector<int> flips = rndq_draw(2, 777, 1, 200000);
+    long long ones = 0;
+    for (size_t i = 0; i < flips.size(); i++)
+        ones += flips[i];
+    ensure(ones > 98000 && ones < 102000);
+}
+
+TEST(rnd_versions_0_and_1_are_unaffected_by_version_2) {
+    /* Versions 0 and 1 are a compatibility surface: adding version 2 must not
+       perturb them. These are the exact periods measured before the change. */
+    ensure(rndq_repeatsWith(rndq_draw(1, 12345, 1, 3 * 65536), 65536));
+    ensure(rndq_repeatsWith(rndq_draw(0, 12345, 1, 3 * 131072), 131072));
 }
 
 TEST(rnd_int_overload_is_not_periodic) {

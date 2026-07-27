@@ -2,7 +2,7 @@
 
 ## What this repository is
 
-**testlib 0.9.46** — a single-header C++ library (`testlib.h`, ~6000 lines,
+**testlib 0.9.47** — a single-header C++ library (`testlib.h`, ~6000 lines,
 MIT) for preparing competitive programming problems: generators, validators,
 checkers, interactors and scorers.
 
@@ -98,9 +98,10 @@ directory except `test-006`: set the environment yourself and run its
 
 - Checkers register with `registerTestlibCmd` — there is **no**
   `registerChecker`.
-- `rnd.next(0, 1)` repeats every 65536 draws; `rnd.next(2)` does not. Never
-  change `rnd`'s output for versions 0 or 1 — any fix goes behind a new
-  `registerGen(argc, argv, 2)`. See `plan.md` R-01.
+- **Use `registerGen(argc, argv, 2)` for new generators.** Versions 0 and 1
+  repeat `rnd.next(0, 1)` every 65536 draws. All three streams are frozen
+  compatibility surfaces pinned by `tests/test-003_run-rnd/`; never change the
+  output of an existing version.
 - A read failure on `inf` or `ans` is promoted to `_fail`, never `_wa`.
 - `rand`, `srand` and `std::random_shuffle` are deliberately poisoned; use
   `rnd` and testlib's `shuffle`.

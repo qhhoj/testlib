@@ -25,7 +25,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.46"
+#define VERSION "0.9.47"
 
 /*
  * Mike Mirzayanov
@@ -63,6 +63,10 @@
  */
 
 const char *latestFeatures[] = {
+        "Added registerGen(argc, argv, 2): a new random generator version whose 63-bit draws use "
+                "only high-order LCG bits. Versions 0 and 1 take the low bits of the 48-bit state, "
+                "so rnd.next(0, 1) repeats every 65536 calls there (rnd.next(2) is unaffected). "
+                "Versions 0 and 1 are unchanged; use 2 for new generators",
         "Fixed the scorer API: registerScorer now marks itself registered (a scorer used to "
                 "abort with 'Call register-function in the first line of the main'), scoring runs "
                 "from registerScorer instead of a static destructor, serializeVerdict no longer "
@@ -769,6 +773,29 @@ private:
         } else {
             if (bits > 63)
                 __testlib_fail("random_t::nextBits(int bits): n must be less than 64");
+
+            /*
+             * Versions 0 and 1 concatenate a 31-bit draw with a 31/32-bit one.
+             * The two operands occupy disjoint bit ranges, so the xor is a plain
+             * concatenation and the low result bits are the low bits of the
+             * 48-bit LCG state -- precisely the bits an LCG is worst at. Under
+             * version 1 that makes rnd.next(0, 1) repeat every 65536 calls.
+             * Both are kept byte-for-byte: every existing generator depends on
+             * reproducing its tests exactly.
+             *
+             * Version 2 assembles the value from 21-bit draws and keeps only
+             * the top 21 bits of the state each time, so no result bit comes
+             * from a state bit below 48 - 21 = 27.
+             */
+            if (random_t::version >= 2) {
+                const int CHUNK = 21;
+                long long result = 0;
+                for (int produced = 0; produced < bits; produced += CHUNK) {
+                    int take = bits - produced < CHUNK ? bits - produced : CHUNK;
+                    result = (result << take) | nextBits(take);
+                }
+                return result;
+            }
 
             int lowerBitCount = (random_t::version == 0 ? 31 : 32);
 
@@ -4600,8 +4627,8 @@ static void __testlib_set_testset_and_group(int argc, char* argv[]) {
 }
 
 void registerGen(int argc, char *argv[], int randomGeneratorVersion) {
-    if (randomGeneratorVersion < 0 || randomGeneratorVersion > 1)
-        quitf(_fail, "Random generator version is expected to be 0 or 1.");
+    if (randomGeneratorVersion < 0 || randomGeneratorVersion > 2)
+        quitf(_fail, "Random generator version is expected to be 0, 1 or 2.");
     random_t::version = randomGeneratorVersion;
 
     __testlib_ensuresPreconditions();
@@ -5017,7 +5044,7 @@ int rand() RAND_THROW_STATEMENT
 __attribute__ ((error("Don't use srand(), you should use "
 "'registerGen(argc, argv, 1);' to initialize generator seed "
 "by hash code of the command line params. The third parameter "
-"is randomGeneratorVersion (currently the latest is 1).")))
+"is randomGeneratorVersion (currently the latest is 2).")))
 #endif
 #ifdef _MSC_VER
 #   pragma warning( disable : 4273 )
@@ -5027,7 +5054,7 @@ void srand(unsigned int seed) RAND_THROW_STATEMENT
     quitf(_fail, "Don't use srand(), you should use "
                  "'registerGen(argc, argv, 1);' to initialize generator seed "
                  "by hash code of the command line params. The third parameter "
-                 "is randomGeneratorVersion (currently the latest is 1) [ignored seed=%u].", seed);
+                 "is randomGeneratorVersion (currently the latest is 2) [ignored seed=%u].", seed);
 }
 
 void startTest(int test) {

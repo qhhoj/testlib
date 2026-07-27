@@ -7,7 +7,7 @@
 > maintained at [qhhoj/testlib](https://github.com/qhhoj/testlib) and carries
 > local changes, so it is **not** interchangeable with an upstream release.
 >
-> Forked at upstream **0.9.45**; this copy is **0.9.49**:
+> Forked at upstream **0.9.45**; this copy is **0.9.50**:
 >
 > | Version | Change |
 > | --- | --- |
@@ -15,6 +15,7 @@
 > | 0.9.47 | Added random generator version 2 (`registerGen(argc, argv, 2)`). Under versions 0 and 1, `rnd.next(0, 1)` repeats every 65536 draws. Those versions are unchanged, so existing test packages still reproduce exactly. |
 > | 0.9.48 | Version 2 also fixes command-line seeding: versions 0 and 1 read argument bytes as `char`, so a byte ≥ 0x80 seeds differently on x86 than on ARM and the same command line yields different tests per machine. |
 > | 0.9.49 | Fixed undefined behaviour in the option parser: a value with no digits in its mantissa, such as `-n=-e-5`, wrote past the start of a string. A bare sign is now rejected instead of silently parsing as `0`. |
+> | 0.9.50 | Fixed a heap buffer overflow in `InStream::skipChar()`, which never refilled the buffer or checked bounds. A checker skipping a participant-supplied number of characters read past the end of the 2 MB buffer, silently. |
 >
 > [`plan.md`](plan.md) is an audit of the library recording the remaining known
 > defects, each with a reproducer and a proposed fix. See [`docs/`](docs/) for

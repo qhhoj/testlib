@@ -3,7 +3,7 @@
 How to use testlib to prepare a competitive programming problem: generators,
 validators, checkers, interactors and scorers.
 
-This guide describes **testlib 0.9.49** as vendored in this repository
+This guide describes **testlib 0.9.50** as vendored in this repository
 (`testlib.h`, single header, MIT). Line references point at that file.
 
 - [1. The pieces of a problem package](#1-the-pieces-of-a-problem-package)
@@ -72,7 +72,7 @@ g++ -std=c++17 -O2 -I/path/to/testlib mygen.cpp -o mygen
 - The repo's own test suite compiles every sample with `-Wpedantic -Werror -O2`
   (`tests/scripts/compile`). Use the same flags for anything you add here.
 - **Never build with `-ffast-math`.** `__testlib_ensuresPreconditions()`
-  (`testlib.h:4625`) detects it via a runtime NaN check and aborts, because
+  (`testlib.h:4642`) detects it via a runtime NaN check and aborts, because
   `doubleCompare` relies on real IEEE NaN semantics. It also static-asserts
   `sizeof(int) == 4`, `sizeof(long long) == 8`, `sizeof(double) == 8`.
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
   different arguments (`gen 1`, `gen 2`, …), not with a loop inside.
 - **Never** call `srand`, `time(0)`, `std::random_device`, or seed anything
   yourself. `rand()`, `srand()` and `std::random_shuffle` are deliberately
-  poisoned (`testlib.h:5061`, `5078`, `5096`) — using them is a compile error
+  poisoned (`testlib.h:5078`, `5095`, `5113`) — using them is a compile error
   under GCC and a `_fail` otherwise.
 
 The third argument is the random-generator version. **Use `2` for new
@@ -208,7 +208,7 @@ std::string mode = opt("mode", "random");
 if (has_opt("sorted")) { /* ... */ }
 ```
 
-Accepted argument forms (`testlib.h:5542`):
+Accepted argument forms (`testlib.h:5559`):
 
 | Form | Example |
 | --- | --- |
@@ -632,7 +632,7 @@ before `main` returns.
 
 A small regex-like language used by `rnd.next(pattern)` (generate a matching
 string) and by every `read*` overload that takes a pattern (validate a
-string). Implemented in `class pattern` (`testlib.h:734`, `1373-1656`).
+string). Implemented in `class pattern` (`testlib.h:738`, `1377-1660`).
 
 | Syntax | Meaning |
 | --- | --- |
@@ -662,7 +662,7 @@ if (!pnum.matches(token)) quitf(_pe, "…");
 
 ### It looks like regex and is not — read this before writing one
 
-These are measured behaviours of 0.9.49, each pinned by a test in
+These are measured behaviours of 0.9.50, each pinned by a test in
 `tests/test-004_use-test.h/tests/test-pattern-defects.cpp`. Full detail and
 fix plans are in [`plan.md`](../plan.md).
 
@@ -700,7 +700,7 @@ Default process exit codes and messages:
 | `_wa` | `wrong answer ` | 1 | |
 | `_pe` | `wrong output format ` | 2 | |
 | `_fail` | `FAIL ` | 3 | jury/package error, never the participant's fault |
-| `_dirt` | `wrong output format ` | **2** | rewritten to `_pe` at `testlib.h:3201`; `DIRT_EXIT_CODE` (4) is not used on this path |
+| `_dirt` | `wrong output format ` | **2** | rewritten to `_pe` at `testlib.h:3218`; `DIRT_EXIT_CODE` (4) is not used on this path |
 | `_points` | `points ` | 7 | via `quitp` / `quitpi` |
 | `_unexpected_eof` | `wrong output format ` | **2** | becomes 8 only with `-DENABLE_UNEXPECTED_EOF` |
 | `_pc(x)` | `partially correct (x) ` | `PC_BASE_EXIT_CODE + x` (0 + x by default, 50 + x under `-DTESTSYS`) | |

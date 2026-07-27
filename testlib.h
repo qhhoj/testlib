@@ -27,7 +27,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.49"
+#define VERSION "0.9.50"
 
 /*
  * Mike Mirzayanov
@@ -69,6 +69,11 @@
  *   0.9.49  Fixed undefined behaviour in the option parser: a value with no
  *           digits in its mantissa, such as -n=-e-5, wrote past the start of a
  *           string. A bare sign is now rejected instead of parsing as 0.
+ *   0.9.50  Fixed a heap buffer overflow in InStream::skipChar(): it never
+ *           refilled the buffer or checked bounds, so skipping characters
+ *           without an intervening read ran off the end of the 2MB buffer and,
+ *           on files larger than it, skipped within stale content instead of
+ *           advancing through the file.
  *
  * See plan.md in the repository root for the full audit and the remaining
  * known defects.
@@ -96,6 +101,10 @@
  */
 
 const char *latestFeatures[] = {
+        "Fixed a heap buffer overflow in InStream::skipChar(): unlike every other accessor it "
+                "never refilled the buffer or checked bounds, so skipping characters without an "
+                "intervening read walked off the end of the 2MB buffer. A checker skipping a "
+                "participant-supplied count of characters read out of bounds silently",
         "Fixed undefined behaviour in the opts parser: a value whose mantissa had no digits, "
                 "such as -n=-e-5, left an empty mantissa and built an iterator before begin(). "
                 "A bare sign is now rejected instead of parsing as 0 (opt<int> on -n=- used to "
@@ -2070,13 +2079,26 @@ public:
     }
 
     void skipChar() {
-        increment();
+        /*
+         * Mirrors nextChar(): refill first, and do not step over a virtual EOF
+         * marker. Without the refill this indexed buffer[bufferPos++] with no
+         * bounds check at all, so a caller that skipped without an intervening
+         * curChar()/nextChar() -- the natural "skip n characters" loop, with n
+         * taken from participant output -- ran off the end of the buffer.
+         */
+        if (!refill())
+            return;
+
+        if (!isEof[bufferPos])
+            increment();
     }
 
     void unreadChar(int c) {
         bufferPos--;
         if (bufferPos < 0)
             __testlib_fail("BufferedFileInputStreamReader::unreadChar(int): bufferPos < 0");
+        if (bufferPos >= int(BUFFER_SIZE))
+            __testlib_fail("BufferedFileInputStreamReader::unreadChar(int): bufferPos >= BUFFER_SIZE");
         isEof[bufferPos] = (c == EOFC);
         buffer[bufferPos] = char(c);
         if (c == LF)

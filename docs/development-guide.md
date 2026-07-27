@@ -17,13 +17,13 @@ read the [usage guide](usage-guide.md) instead.
 
 ## 1. What this repository is
 
-- **testlib 0.9.49**, MIT licensed, copyright Mike Mirzayanov.
+- **testlib 0.9.50**, MIT licensed, copyright Mike Mirzayanov.
 - Upstream: `https://github.com/MikeMirzayanov/testlib`. This checkout's
   `origin` is the fork `https://github.com/qhhoj/testlib.git`.
 - Forked from upstream at `1e4e8a2` (0.9.45), 457 commits back to 2008-09-14.
   **This fork now diverges:** 0.9.46 fixes the scorer API, 0.9.47/0.9.48 add
-  random generator version 2, and 0.9.49 fixes the option parser — see
-  `plan.md`.
+  random generator version 2, 0.9.49 fixes the option parser, and 0.9.50
+  fixes a heap overflow in skipChar() — see `plan.md`.
 - The library is used by Codeforces, the Russian National Olympiad in
   Informatics, and ICPC regionals; Polygon (the problem-preparation system)
   is built around it.
@@ -42,7 +42,7 @@ git log --oneline master..upstream/master
 
 | Path | What it is |
 | --- | --- |
-| `testlib.h` | The whole library. One header, 6006 lines, ~200 KB. |
+| `testlib.h` | The whole library. One header, 6483 lines, ~215 KB. |
 | `checkers/` | 21 ready-made checkers, also serving as samples. |
 | `validators/` | 8 sample validators. |
 | `generators/` | 11 sample generators. |
@@ -68,49 +68,53 @@ including markdown. Do not "fix" this.
 
 ## 3. Anatomy of `testlib.h`
 
-Approximate map (line numbers as of 0.9.49):
+Approximate map (line numbers as of 0.9.50):
 
 | Lines | Contents |
 | --- | --- |
-| 30 | `#define VERSION "0.9.49"` |
-| 65+ | `const char *latestFeatures[]` — the reverse-chronological changelog |
-| 252–311 | Exit-code macros (`OK_EXIT_CODE`, `WA_EXIT_CODE`, …) with `EJUDGE` / `CONTESTER` / `TESTSYS` variants |
-| 337–368 | `format` buffer, `__TESTLIB_MAX_TEST_CASE`, test-case globals |
-| 435–668 | `upperCase`/`lowerCase`, `doubleCompare`, `doubleDelta`, `vtos`, `toString`, `toHumanReadableString` |
-| 716, 1297–1580 | `class pattern` — declaration and implementation |
-| 770–1366 | `class random_t` — the whole `rnd` API |
-| 1699–1741 | `TMode`, `TResult`, `TTestlibMode`, `_pc()`, `outcomes[]` |
-| 1775–2076 | Input readers: `StringInputStreamReader`, `FileInputStreamReader`, `BufferedFileInputStreamReader` |
-| 2081–2452 | `class InStream` |
-| 2453–2455 | `InStream inf, ouf, ans;` |
-| 2465–2848 | `ValidatorBoundsHit`, `ConstantBound(s)`, `class Validator`, global `validator` |
-| 2853–2906 | `TestlibFinalizeGuard` |
-| 2961–3005 | `setTestCase`, `unsetTestCase`, `resultExitCode` |
-| 3129–3287 | `InStream::quit` / `quitf` / `quitif` / `quits` — where verdict rewriting and dirt checking happen |
-| 4501–4606 | Global `quit`, `quitp`, `quitpi`, `quitf`, `__testlib_help` |
-| 4621 | `__testlib_ensuresPreconditions()` |
-| 4673–4983 | `registerGen`, `registerInteraction`, `registerValidation`, `registerTestlibCmd`, `registerTestlib` |
-| 4841, 4818–4830 | `class Checker`, global `checker` |
-| 5002–5036 | `__testlib_ensure`, `ensure` / `ensure_ext` macros, `ensuref`, `__testlib_fail`, `setName` |
-| 5050–5096 | `shuffle`, and the poisoned `random_shuffle` / `rand` / `srand` |
-| 5104–5152 | `startTest`, `compress`, `englishEnding`, `join` |
-| 5263–5320 | `expectedButFound` and its specializations |
-| 5400–5506 | The `println` family |
-| 5508–6000 | Command-line options: `TestlibOpt`, `parseOpt`, `prepareOpts`, `has_opt`, `opt<T>` |
-| 6003–6307 | Scorer: `TestResultVerdict`, `TestResult`, serialization, `readTestResults` |
-| 6286 | `registerScorer` |
-| 6336–6381 | `opt<T>(key, default)`, `ensureNoUnusedOpts`, `suppressEnsureNoUnusedOpts` |
-| 6387–6426 | `testlib_format_`, `format()` (with a `std::format` path under C++20) |
+| 30 | `#define VERSION` |
+| 103+ | `latestFeatures[]` — the changelog, newest first |
+| 295–360 | Exit-code macros (`OK_EXIT_CODE`, `WA_EXIT_CODE`, …) with `EJUDGE` / `CONTESTER` / `TESTSYS` variants |
+| 379–410 | 16 MB `__testlib_format_buffer`, `FMT_TO_RESULT`, `__TESTLIB_MAX_TEST_CASE`, test-case globals |
+| 477–710 | `upperCase`/`lowerCase`, `doubleCompare`, `doubleDelta`, `vtos`, `toString`, `toHumanReadableString` |
+| 776, 1415–1705 | `class pattern` — declaration, then implementation |
+| 812–1410 | `class random_t` — the whole `rnd` API, and its static constants |
+| 1741–1790 | `TMode`, `TResult`, `TTestlibMode`, `_pc()`, `outcomes[]` |
+| 1817–2130 | Input readers: `StringInputStreamReader`, `FileInputStreamReader`, `BufferedFileInputStreamReader` |
+| 2136–2505 | `struct InStream` |
+| 2509–2511 | `InStream inf, ouf, ans;` |
+| 2522–2905 | `ValidatorBoundsHit`, `ConstantBound(s)`, `class Validator` (2570), global `validator` |
+| 2908–2960 | `TestlibFinalizeGuard` |
+| 3016–3045 | `setTestCase`, `unsetTestCase`, `resultExitCode` (3038) |
+| 3184–3350 | `InStream::quit` / `quitf` / `quitif` / `quits` — verdict rewriting and the dirt check |
+| 4556–4670 | Global `quit`, `quitp`, `quitpi`, `quitf`, `__testlib_help` (4659) |
+| 4680 | `__testlib_ensuresPreconditions()` |
+| 4728–5045 | `registerGen`, `registerInteraction`, `registerValidation`, `registerTestlibCmd`, `registerTestlib` |
+| 4939 | `class Checker`, global `checker` |
+| 5070–5100 | `__testlib_ensure`, `ensure` / `ensure_ext` macros, `ensuref`, `__testlib_fail`, `setName` (5092) |
+| 5105–5155 | `shuffle`, and the poisoned `random_shuffle` / `rand` / `srand` |
+| 5159–5200 | `startTest`, `compress`, `englishEnding`, `join` |
+| 5297–5350 | `expectedButFound` and its specializations |
+| 5421–5530 | The `println` family |
+| 5563–6055 | Command-line options: `TestlibOpt`, `parseOpt`, `prepareOpts`, `has_opt`, `opt<T>` |
+| 6056–6380 | Scorer: `TestResultVerdict`, `TestResult`, serialization, `readTestResults`, `registerScorer` (6364) |
+| 6392–6440 | `opt<T>(key, default)`, `ensureNoUnusedOpts`, `suppressEnsureNoUnusedOpts` |
+| 6442–6490 | `testlib_format_`, `format()` (with a `std::format` path under C++20) |
+
+**Regenerate this table rather than shifting its numbers by hand.** It drifted
+badly across several edits because each change nudged the numbers mechanically
+instead of re-deriving them; a wrong map is worse than none. Locate anchors
+with `grep -n "class random_t {" testlib.h` and friends.
 
 Two behaviours worth knowing before you change anything in the quit path:
 
-- `_dirt` is rewritten to `_pe` at line 3125, so `DIRT_EXIT_CODE` (4) never
+- `_dirt` is rewritten to `_pe` at line 3256, so `DIRT_EXIT_CODE` (4) never
   reaches `resultExitCode` on that path and the observed exit code is 2.
-- `__testlib_shouldCheckDirt` (2990) fires for `_ok`, `_points` and
+- `__testlib_shouldCheckDirt` (3121) fires for `_ok`, `_points` and
   `_partially`, and is skipped in interactor mode.
 
-**Rule for any user-visible change:** bump `VERSION` (line 28) and prepend a
-one-line entry to `latestFeatures[]` (line 65). That array is the only
+**Rule for any user-visible change:** bump `VERSION` (line 30) and prepend a
+one-line entry to `latestFeatures[]` (line 103). That array is the only
 changelog the project has.
 
 ## 4. The test harness
@@ -327,7 +331,20 @@ as GitHub retires runner images — expect to keep doing that.
 6. If you touched anything a sample demonstrates, update the sample in
    `checkers/` / `validators/` / `generators/` / `interactors/` — they are all
    compiled by `test-000_compile-all-cpp`.
-7. Remember that a docs-only commit will show CI as not-run, not as passing.
+7. **Any `.cpp` that does not include `testlib.h` must avoid the CRT functions
+   Windows marks deprecated** — `scanf`, `fopen`, `sprintf`, `strcpy`, `gets`,
+   `strcat`. `testlib.h` defines `_CRT_SECURE_NO_DEPRECATE` and
+   `_CRT_SECURE_NO_WARNINGS` (lines 222-223), so anything including it is
+   covered; a standalone solution or helper is not, and
+   `-Wdeprecated-declarations` plus `-Werror` fails the build. **Linux and
+   macOS will not catch this** — only the Windows jobs will. Use `<iostream>`
+   and `<fstream>`. Check with:
+   ```sh
+   grep -rnE '(^|[^A-Za-z_])(scanf|fopen|sprintf|strcpy|gets|strcat)[[:space:]]*\(' \
+       --include=*.cpp . | grep -v '^./tests/lib/'
+   ```
+   then confirm each hit either includes `testlib.h` or is a comment.
+8. Remember that a docs-only commit will show CI as not-run, not as passing.
 
 Things that are load-bearing and easy to break by accident:
 
@@ -350,4 +367,4 @@ Things that are load-bearing and easy to break by accident:
 - Keep example sources compiling under the repo's own flags
   (`-std=c++17 -Wpedantic -Werror -O2 -I<repo-root>`).
 - Cite `file:line` for claims about `testlib.h`, and verify them — the line
-  numbers here are for 0.9.49 and will drift.
+  numbers here are for 0.9.50 and will drift.

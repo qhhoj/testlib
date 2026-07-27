@@ -2,14 +2,17 @@
 
 ## What this repository is
 
-**testlib 0.9.49** — a single-header C++ library (`testlib.h`, ~6500 lines,
+**testlib 0.9.50** — a single-header C++ library (`testlib.h`, ~6500 lines,
 MIT) for preparing competitive programming problems: generators, validators,
 checkers, interactors and scorers.
 
-This checkout is a mirror of upstream `MikeMirzayanov/testlib` via the fork
-`qhhoj/testlib`, currently with **zero local divergence**. Treat `testlib.h`
-as vendored upstream code — do not modify it casually, and prefer sending
-fixes upstream.
+This checkout is the fork `qhhoj/testlib`, forked from upstream
+`MikeMirzayanov/testlib` at 0.9.45 and **now diverging**: 0.9.46 repairs the
+scorer API, 0.9.47/0.9.48 add random generator version 2, 0.9.49 fixes the
+option parser, 0.9.50 fixes a heap overflow in `skipChar()`. `plan.md` tracks
+what is fixed and what remains. Still treat `testlib.h` as vendored code —
+keep local patches small and isolated so rebasing onto upstream stays cheap,
+and prefer sending fixes upstream.
 
 ## Where to look
 

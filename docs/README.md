@@ -23,9 +23,16 @@ demonstration helps.
   build-and-run script, following `examples/maxpos/`.
 - Any `.cpp` you add under `docs/` is picked up by the repo's
   `tests/test-000_compile-all-cpp` sweep, so it must compile warning-free
-  under `-std=c++11 … c++23 -Wpedantic -Werror`. Verify before committing.
+  under `-std=c++11 … c++23 -Wpedantic -Werror`, **on Windows too**.
+- If the file does **not** include `testlib.h`, avoid `scanf`, `fopen`,
+  `sprintf`, `strcpy` and friends: the Windows UCRT headers mark them
+  deprecated, and `-Werror` turns that into a build failure. `testlib.h`
+  defines `_CRT_SECURE_NO_WARNINGS` for everything that includes it, which is
+  why the testlib samples are fine and a plain solution file is not. Use
+  `<iostream>` / `<fstream>` instead. This is not reproducible on Linux or
+  macOS — see the note in the development guide.
 - Cite `testlib.h:<line>` for claims about the library, and re-check them when
-  the version changes — the line numbers in these guides are for 0.9.49.
+  the version changes — the line numbers in these guides are for 0.9.50.
 
 ## Note
 

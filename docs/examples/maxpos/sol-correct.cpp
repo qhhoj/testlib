@@ -1,5 +1,9 @@
 /* MAXPOS reference solution. Plain stdin/stdout, no testlib. */
 
+#if defined(_MSC_VER)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <cstdio>
 #include <vector>
 

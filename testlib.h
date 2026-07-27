@@ -15,7 +15,9 @@
  *
  * Also read about wnext() to generate off-center random distribution.
  *
- * See https://github.com/MikeMirzayanov/testlib/ to get latest version or bug tracker.
+ * This is a MODIFIED copy of testlib, maintained at
+ * https://github.com/qhhoj/testlib. For the original, upstream releases and
+ * the upstream bug tracker see https://github.com/MikeMirzayanov/testlib/.
  */
 
 #ifndef _TESTLIB_H_
@@ -39,6 +41,30 @@
  * provided the above notices are retained, and a notice that the code was
  * modified is included with the above copyright notice.
  *
+ */
+
+/*
+ * NOTICE OF MODIFICATION
+ *
+ * This file has been modified and is not the upstream release. Modifications
+ * copyright (c) 2026 qhhoj, released under the same terms as the original.
+ * The copyright and permission notices above are those of the original author
+ * and are retained in full.
+ *
+ * Forked from upstream 0.9.45. Changes:
+ *   0.9.46  Repaired the scorer API. registerScorer never marked itself
+ *           registered, so every scorer aborted and then crashed; scoring now
+ *           runs from registerScorer rather than a static destructor, verdict
+ *           serialization no longer throws a raw const char*, deserialized
+ *           TestResult fields are validated, and the escape codec no longer
+ *           drops CR.
+ *   0.9.47  Added random generator version 2, registerGen(argc, argv, 2).
+ *           Versions 0 and 1 return the low bits of the 48-bit LCG state from
+ *           63-bit draws, so rnd.next(0, 1) repeats every 65536 calls there.
+ *           Versions 0 and 1 are unchanged and remain byte-identical.
+ *
+ * See plan.md in the repository root for the full audit and the remaining
+ * known defects.
  */
 
 /* NOTE: This file contains testlib library for C++.

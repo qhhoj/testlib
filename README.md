@@ -1,5 +1,23 @@
 # Testlib
 
+> **This is a modified fork.**
+>
+> Upstream is [MikeMirzayanov/testlib](https://github.com/MikeMirzayanov/testlib),
+> by Mike Mirzayanov, who wrote testlib and holds copyright in it. This copy is
+> maintained at [qhhoj/testlib](https://github.com/qhhoj/testlib) and carries
+> local changes, so it is **not** interchangeable with an upstream release.
+>
+> Forked at upstream **0.9.45**; this copy is **0.9.47**:
+>
+> | Version | Change |
+> | --- | --- |
+> | 0.9.46 | Repaired the scorer API, which was completely non-functional — `registerScorer` never marked itself registered, so every scorer aborted and then crashed. |
+> | 0.9.47 | Added random generator version 2 (`registerGen(argc, argv, 2)`). Under versions 0 and 1, `rnd.next(0, 1)` repeats every 65536 draws. Those versions are unchanged, so existing test packages still reproduce exactly. |
+>
+> [`plan.md`](plan.md) is an audit of the library recording the remaining known
+> defects, each with a reproducer and a proposed fix. See [`docs/`](docs/) for
+> usage and development guides.
+
 ## Intro
 
 This project contains a C++ implementation of testlib. It is already being used in many programming contests in Russia, such as the Russian National Olympiad in Informatics and different stages of ICPC. Join!

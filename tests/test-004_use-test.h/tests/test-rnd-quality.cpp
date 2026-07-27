@@ -102,6 +102,62 @@ TEST(rnd_versions_0_and_1_are_unaffected_by_version_2) {
     ensure(rndq_repeatsWith(rndq_draw(0, 12345, 1, 3 * 131072), 131072));
 }
 
+/* Seeds a fresh generator from a command line and returns the first draws. */
+static std::vector<int> rndq_seedFrom(int version, std::vector<std::string> args, size_t count) {
+    std::vector<char *> argv;
+    for (size_t i = 0; i < args.size(); i++)
+        argv.push_back(const_cast<char *>(args[i].c_str()));
+
+    int savedVersion = random_t::version;
+    random_t::version = version;
+    rnd.setSeed(int(argv.size()), argv.data());
+
+    std::vector<int> v;
+    v.reserve(count);
+    for (size_t i = 0; i < count; i++)
+        v.push_back(rnd.next(0, 1));
+
+    random_t::version = savedVersion;
+    return v;
+}
+
+TEST(rnd_version_2_seeding) {
+    /* R-07. Versions 0 and 1 convert argument bytes with
+       (unsigned int)(argv[i][j]) -- a signed char on x86/MSVC, unsigned on ARM
+       -- so any byte >= 0x80 seeds differently per architecture and the same
+       command line yields different tests on different machines. Version 2
+       reads through unsigned char.
+
+       The property is asserted indirectly: a high-bit argument must seed the
+       same as the identical byte sequence built from explicit unsigned values,
+       which is what an unsigned-char platform would pass in. */
+    std::string highBit;
+    highBit += char(0xC3);
+    highBit += char(0xA9);
+
+    std::string sameBytes;
+    sameBytes += static_cast<char>(static_cast<unsigned char>(0xC3));
+    sameBytes += static_cast<char>(static_cast<unsigned char>(0xA9));
+
+    ensure(rndq_seedFrom(2, {"gen", highBit}, 64) == rndq_seedFrom(2, {"gen", sameBytes}, 64));
+
+    /* Reproducibility: identical command lines give identical streams. */
+    ensure(rndq_seedFrom(2, {"gen", "1"}, 256) == rndq_seedFrom(2, {"gen", "1"}, 256));
+
+    /* Distinct command lines give distinct streams, and argument boundaries
+       matter: {"a","b"} must not collide with {"ab"}. */
+    ensure(rndq_seedFrom(2, {"gen", "1"}, 256) != rndq_seedFrom(2, {"gen", "2"}, 256));
+    ensure(rndq_seedFrom(2, {"gen", "a", "b"}, 256) != rndq_seedFrom(2, {"gen", "ab"}, 256));
+
+    /* Neighbouring command lines are uncorrelated: agreement near 50%. */
+    std::vector<int> a = rndq_seedFrom(2, {"gen", "1"}, 2000);
+    std::vector<int> b = rndq_seedFrom(2, {"gen", "2"}, 2000);
+    int same = 0;
+    for (size_t i = 0; i < a.size(); i++)
+        same += (a[i] == b[i]);
+    ensure(same > 900 && same < 1100);
+}
+
 TEST(rnd_int_overload_is_not_periodic) {
     /* R-01, the other half: rnd.next(2) resolves to next(int), which uses the
        TOP 31 bits and is sound. This asymmetry is what makes the bug a trap --

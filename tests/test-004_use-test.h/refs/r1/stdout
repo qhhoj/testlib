@@ -11,6 +11,7 @@ Running test 'rnd_periodicity_scales_with_range'                                
 Running test 'rnd_periodicity_version_0'                                                            OK
 Running test 'rnd_version_2_has_no_short_period'                                                    OK
 Running test 'rnd_versions_0_and_1_are_unaffected_by_version_2'                                     OK
+Running test 'rnd_version_2_seeding'                                                                OK
 Running test 'rnd_int_overload_is_not_periodic'                                                     OK
 Running test 'pattern_open_ended_count_means_exact'                                                 OK
 Running test 'pattern_count_accepts_trailing_garbage'                                               OK
@@ -31,4 +32,4 @@ Running test 'scorer_verdict_roundtrip'                                         
 Running test 'scorer_testresult_roundtrip'                                                          OK
 Running test 'scorer_deserialize_rejects_bad_fields'                                                OK
 
-SUCCESS 32 tests passed.
+SUCCESS 33 tests passed.

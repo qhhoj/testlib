@@ -27,7 +27,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.47"
+#define VERSION "0.9.48"
 
 /*
  * Mike Mirzayanov
@@ -58,6 +58,10 @@
  *           serialization no longer throws a raw const char*, deserialized
  *           TestResult fields are validated, and the escape codec no longer
  *           drops CR.
+ *   0.9.48  Version 2 also fixes command-line seeding: versions 0 and 1 read
+ *           argument bytes as char, so any byte >= 0x80 seeds differently on
+ *           x86 than on ARM and the same command line produces different tests
+ *           per machine.
  *   0.9.47  Added random generator version 2, registerGen(argc, argv, 2).
  *           Versions 0 and 1 return the low bits of the 48-bit LCG state from
  *           63-bit draws, so rnd.next(0, 1) repeats every 65536 calls there.
@@ -89,6 +93,11 @@
  */
 
 const char *latestFeatures[] = {
+        "Random generator version 2 also fixes command-line seeding: argument bytes are read "
+                "through unsigned char (versions 0 and 1 read them as signed char on x86 and MSVC "
+                "but unsigned on ARM, so a byte >= 0x80 seeded differently per architecture) and "
+                "the hash is avalanched, so neighbouring command lines no longer give correlated "
+                "streams. Versions 0 and 1 are unchanged",
         "Added registerGen(argc, argv, 2): a new random generator version whose 63-bit draws use "
                 "only high-order LCG bits. Versions 0 and 1 take the low bits of the 48-bit state, "
                 "so rnd.next(0, 1) repeats every 65536 calls there (rnd.next(2) is unaffected). "
@@ -842,7 +851,42 @@ public:
 
     /* Sets seed by command line. */
     void setSeed(int argc, char *argv[]) {
-        random_t p;
+        if (random_t::version >= 2) {
+            /*
+             * Versions 0 and 1 convert each argument byte with
+             * (unsigned int)(argv[i][j]), i.e. from a *signed* char on x86 and
+             * MSVC but an unsigned one on ARM. Any byte >= 0x80 therefore seeds
+             * differently per architecture, so the same command line yields
+             * different tests on different machines. They also mix with a single
+             * LCG step per byte and no avalanche, so command lines differing in
+             * one character produce seeds differing only in their low bits.
+             *
+             * Version 2 reads bytes through unsigned char, so the value is the
+             * same everywhere, and finishes with a strong mixer so that any
+             * one-byte change redistributes the whole seed.
+             */
+            unsigned long long h = 14695981039346656037ULL;   /* FNV-1a offset basis */
+            for (int i = 1; i < argc; i++) {
+                std::size_t le = std::strlen(argv[i]);
+                for (std::size_t j = 0; j < le; j++) {
+                    h ^= (unsigned long long) (unsigned char) (argv[i][j]);
+                    h *= 1099511628211ULL;                    /* FNV-1a prime */
+                }
+                /* Argument separator, so that {"a","b"} and {"ab"} differ. */
+                h ^= 0x100ULL;
+                h *= 1099511628211ULL;
+            }
+
+            /* Avalanche, so neighbouring command lines give unrelated seeds. */
+            h ^= h >> 33;
+            h *= 0xFF51AFD7ED558CCDULL;
+            h ^= h >> 33;
+            h *= 0xC4CEB9FE1A85EC53ULL;
+            h ^= h >> 33;
+
+            seed = h & mask;
+            return;
+        }
 
         seed = 3905348978240129619LL;
         for (int i = 1; i < argc; i++) {

@@ -17,11 +17,11 @@ read the [usage guide](usage-guide.md) instead.
 
 ## 1. What this repository is
 
-- **testlib 0.9.47**, MIT licensed, copyright Mike Mirzayanov.
+- **testlib 0.9.48**, MIT licensed, copyright Mike Mirzayanov.
 - Upstream: `https://github.com/MikeMirzayanov/testlib`. This checkout's
   `origin` is the fork `https://github.com/qhhoj/testlib.git`.
 - Forked from upstream at `1e4e8a2` (0.9.45), 457 commits back to 2008-09-14.
-  **This fork now diverges:** 0.9.46 fixes the scorer API and 0.9.47 adds
+  **This fork now diverges:** 0.9.46 fixes the scorer API, and 0.9.47/0.9.48 add
   random generator version 2 — see `plan.md`.
 - The library is used by Codeforces, the Russian National Olympiad in
   Informatics, and ICPC regionals; Polygon (the problem-preparation system)
@@ -67,39 +67,39 @@ including markdown. Do not "fix" this.
 
 ## 3. Anatomy of `testlib.h`
 
-Approximate map (line numbers as of 0.9.47):
+Approximate map (line numbers as of 0.9.48):
 
 | Lines | Contents |
 | --- | --- |
-| 28 | `#define VERSION "0.9.47"` |
+| 30 | `#define VERSION "0.9.48"` |
 | 65+ | `const char *latestFeatures[]` — the reverse-chronological changelog |
-| 243–302 | Exit-code macros (`OK_EXIT_CODE`, `WA_EXIT_CODE`, …) with `EJUDGE` / `CONTESTER` / `TESTSYS` variants |
-| 328–359 | `format` buffer, `__TESTLIB_MAX_TEST_CASE`, test-case globals |
-| 426–659 | `upperCase`/`lowerCase`, `doubleCompare`, `doubleDelta`, `vtos`, `toString`, `toHumanReadableString` |
+| 248–307 | Exit-code macros (`OK_EXIT_CODE`, `WA_EXIT_CODE`, …) with `EJUDGE` / `CONTESTER` / `TESTSYS` variants |
+| 333–364 | `format` buffer, `__TESTLIB_MAX_TEST_CASE`, test-case globals |
+| 431–664 | `upperCase`/`lowerCase`, `doubleCompare`, `doubleDelta`, `vtos`, `toString`, `toHumanReadableString` |
 | 716, 1297–1580 | `class pattern` — declaration and implementation |
-| 761–1322 | `class random_t` — the whole `rnd` API |
-| 1655–1697 | `TMode`, `TResult`, `TTestlibMode`, `_pc()`, `outcomes[]` |
-| 1731–2032 | Input readers: `StringInputStreamReader`, `FileInputStreamReader`, `BufferedFileInputStreamReader` |
-| 2037–2408 | `class InStream` |
-| 2409–2411 | `InStream inf, ouf, ans;` |
-| 2421–2804 | `ValidatorBoundsHit`, `ConstantBound(s)`, `class Validator`, global `validator` |
-| 2809–2862 | `TestlibFinalizeGuard` |
-| 2917–2961 | `setTestCase`, `unsetTestCase`, `resultExitCode` |
-| 3085–3243 | `InStream::quit` / `quitf` / `quitif` / `quits` — where verdict rewriting and dirt checking happen |
-| 4457–4562 | Global `quit`, `quitp`, `quitpi`, `quitf`, `__testlib_help` |
-| 4581 | `__testlib_ensuresPreconditions()` |
-| 4629–4939 | `registerGen`, `registerInteraction`, `registerValidation`, `registerTestlibCmd`, `registerTestlib` |
+| 766–1362 | `class random_t` — the whole `rnd` API |
+| 1695–1737 | `TMode`, `TResult`, `TTestlibMode`, `_pc()`, `outcomes[]` |
+| 1771–2072 | Input readers: `StringInputStreamReader`, `FileInputStreamReader`, `BufferedFileInputStreamReader` |
+| 2077–2448 | `class InStream` |
+| 2449–2451 | `InStream inf, ouf, ans;` |
+| 2461–2844 | `ValidatorBoundsHit`, `ConstantBound(s)`, `class Validator`, global `validator` |
+| 2849–2902 | `TestlibFinalizeGuard` |
+| 2957–3001 | `setTestCase`, `unsetTestCase`, `resultExitCode` |
+| 3125–3283 | `InStream::quit` / `quitf` / `quitif` / `quits` — where verdict rewriting and dirt checking happen |
+| 4497–4602 | Global `quit`, `quitp`, `quitpi`, `quitf`, `__testlib_help` |
+| 4621 | `__testlib_ensuresPreconditions()` |
+| 4669–4979 | `registerGen`, `registerInteraction`, `registerValidation`, `registerTestlibCmd`, `registerTestlib` |
 | 4841, 4818–4830 | `class Checker`, global `checker` |
-| 4958–4992 | `__testlib_ensure`, `ensure` / `ensure_ext` macros, `ensuref`, `__testlib_fail`, `setName` |
-| 5006–5052 | `shuffle`, and the poisoned `random_shuffle` / `rand` / `srand` |
-| 5060–5108 | `startTest`, `compress`, `englishEnding`, `join` |
-| 5219–5276 | `expectedButFound` and its specializations |
-| 5356–5462 | The `println` family |
-| 5464–5937 | Command-line options: `TestlibOpt`, `parseOpt`, `prepareOpts`, `has_opt`, `opt<T>` |
-| 5940–6244 | Scorer: `TestResultVerdict`, `TestResult`, serialization, `readTestResults` |
-| 6246 | `registerScorer` |
-| 6273–6318 | `opt<T>(key, default)`, `ensureNoUnusedOpts`, `suppressEnsureNoUnusedOpts` |
-| 6324–6363 | `testlib_format_`, `format()` (with a `std::format` path under C++20) |
+| 4998–5032 | `__testlib_ensure`, `ensure` / `ensure_ext` macros, `ensuref`, `__testlib_fail`, `setName` |
+| 5046–5092 | `shuffle`, and the poisoned `random_shuffle` / `rand` / `srand` |
+| 5100–5148 | `startTest`, `compress`, `englishEnding`, `join` |
+| 5259–5316 | `expectedButFound` and its specializations |
+| 5396–5502 | The `println` family |
+| 5504–5977 | Command-line options: `TestlibOpt`, `parseOpt`, `prepareOpts`, `has_opt`, `opt<T>` |
+| 5980–6284 | Scorer: `TestResultVerdict`, `TestResult`, serialization, `readTestResults` |
+| 6286 | `registerScorer` |
+| 6313–6358 | `opt<T>(key, default)`, `ensureNoUnusedOpts`, `suppressEnsureNoUnusedOpts` |
+| 6364–6403 | `testlib_format_`, `format()` (with a `std::format` path under C++20) |
 
 Two behaviours worth knowing before you change anything in the quit path:
 

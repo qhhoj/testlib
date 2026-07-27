@@ -25,7 +25,7 @@ demonstration helps.
   `tests/test-000_compile-all-cpp` sweep, so it must compile warning-free
   under `-std=c++11 … c++23 -Wpedantic -Werror`. Verify before committing.
 - Cite `testlib.h:<line>` for claims about the library, and re-check them when
-  the version changes — the line numbers in these guides are for 0.9.47.
+  the version changes — the line numbers in these guides are for 0.9.48.
 
 ## Note
 

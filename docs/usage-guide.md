@@ -3,7 +3,7 @@
 How to use testlib to prepare a competitive programming problem: generators,
 validators, checkers, interactors and scorers.
 
-This guide describes **testlib 0.9.47** as vendored in this repository
+This guide describes **testlib 0.9.48** as vendored in this repository
 (`testlib.h`, single header, MIT). Line references point at that file.
 
 - [1. The pieces of a problem package](#1-the-pieces-of-a-problem-package)
@@ -72,7 +72,7 @@ g++ -std=c++17 -O2 -I/path/to/testlib mygen.cpp -o mygen
 - The repo's own test suite compiles every sample with `-Wpedantic -Werror -O2`
   (`tests/scripts/compile`). Use the same flags for anything you add here.
 - **Never build with `-ffast-math`.** `__testlib_ensuresPreconditions()`
-  (`testlib.h:4581`) detects it via a runtime NaN check and aborts, because
+  (`testlib.h:4621`) detects it via a runtime NaN check and aborts, because
   `doubleCompare` relies on real IEEE NaN semantics. It also static-asserts
   `sizeof(int) == 4`, `sizeof(long long) == 8`, `sizeof(double) == 8`.
 
@@ -97,13 +97,17 @@ int main(int argc, char *argv[]) {
 `registerGen` seeds `rnd` from a hash of the **entire command line**
 (`rnd.setSeed(argc, argv)`). Consequences you must internalise:
 
-- Same arguments ⇒ byte-identical output, on every machine and compiler.
+- Same arguments ⇒ byte-identical output, on every machine and compiler —
+  **under version 2**. Versions 0 and 1 read argument bytes as `char`, which is
+  signed on x86 and MSVC but unsigned on ARM, so any argument containing a byte
+  ≥ 0x80 (a UTF-8 name, say) seeds *differently per architecture*. One more
+  reason to use version 2 for new generators.
 - Different arguments ⇒ a different test.
 - To get 20 different random tests, invoke the same generator 20 times with
   different arguments (`gen 1`, `gen 2`, …), not with a loop inside.
 - **Never** call `srand`, `time(0)`, `std::random_device`, or seed anything
   yourself. `rand()`, `srand()` and `std::random_shuffle` are deliberately
-  poisoned (`testlib.h:5017`, `5034`, `5052`) — using them is a compile error
+  poisoned (`testlib.h:5057`, `5074`, `5092`) — using them is a compile error
   under GCC and a `_fail` otherwise.
 
 The third argument is the random-generator version. **Use `2` for new
@@ -204,7 +208,7 @@ std::string mode = opt("mode", "random");
 if (has_opt("sorted")) { /* ... */ }
 ```
 
-Accepted argument forms (`testlib.h:5498`):
+Accepted argument forms (`testlib.h:5538`):
 
 | Form | Example |
 | --- | --- |
@@ -628,7 +632,7 @@ before `main` returns.
 
 A small regex-like language used by `rnd.next(pattern)` (generate a matching
 string) and by every `read*` overload that takes a pattern (validate a
-string). Implemented in `class pattern` (`testlib.h:725`, `1329-1612`).
+string). Implemented in `class pattern` (`testlib.h:730`, `1369-1652`).
 
 | Syntax | Meaning |
 | --- | --- |
@@ -658,7 +662,7 @@ if (!pnum.matches(token)) quitf(_pe, "…");
 
 ### It looks like regex and is not — read this before writing one
 
-These are measured behaviours of 0.9.47, each pinned by a test in
+These are measured behaviours of 0.9.48, each pinned by a test in
 `tests/test-004_use-test.h/tests/test-pattern-defects.cpp`. Full detail and
 fix plans are in [`plan.md`](../plan.md).
 
@@ -696,7 +700,7 @@ Default process exit codes and messages:
 | `_wa` | `wrong answer ` | 1 | |
 | `_pe` | `wrong output format ` | 2 | |
 | `_fail` | `FAIL ` | 3 | jury/package error, never the participant's fault |
-| `_dirt` | `wrong output format ` | **2** | rewritten to `_pe` at `testlib.h:3157`; `DIRT_EXIT_CODE` (4) is not used on this path |
+| `_dirt` | `wrong output format ` | **2** | rewritten to `_pe` at `testlib.h:3197`; `DIRT_EXIT_CODE` (4) is not used on this path |
 | `_points` | `points ` | 7 | via `quitp` / `quitpi` |
 | `_unexpected_eof` | `wrong output format ` | **2** | becomes 8 only with `-DENABLE_UNEXPECTED_EOF` |
 | `_pc(x)` | `partially correct (x) ` | `PC_BASE_EXIT_CODE + x` (0 + x by default, 50 + x under `-DTESTSYS`) | |

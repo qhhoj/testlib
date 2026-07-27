@@ -6,7 +6,10 @@
  * expecting a value silently becomes boolean "true"), O-06 (opt<bool> defaults
  * silently where every other type fails).
  *
- * These assertions describe bugs, not desired behaviour.
+ * Those assertions describe bugs, not desired behaviour.
+ *
+ * opts_rejects_values_without_digits at the end is the opposite: it covers
+ * O-01, which is FIXED, and asserts the desired result.
  */
 
 TEST(opts_has_opt_does_not_mark_used) {
@@ -86,4 +89,43 @@ TEST(opts_bool_defaults_silently) {
     ensure_exit(3, [](){ opt<int>("missing"); });
     ensure_exit(3, [](){ opt<std::string>("missing"); });
     ensure_exit(3, [](){ opt<double>("missing"); });
+}
+
+TEST(opts_rejects_values_without_digits) {
+    /*
+     * O-01, fixed in 0.9.49. A value whose mantissa has no digits used to be
+     * accepted as 0, and "-e-5" additionally reached
+     *   num.insert(num.begin() + int(num.length()) - 1, '.')
+     * with num empty, i.e. an iterator before begin(). That wrote a byte ahead
+     * of the string's inline buffer and left it with length 1 and NUL content.
+     */
+    suppressEnsureNoUnusedOpts();
+
+    const char *bad[] = {"-", ".", "-.", "-e-5", "-e5", ".e2", "1e-", "1e+", "+"};
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        std::string arg = std::string("-n=") + bad[i];
+        const char *args[] = {"gen", arg.c_str()};
+        prepareOpts(2, (char **) args);
+        ensure_exit(3, [](){ opt<int>("n"); });
+
+        prepareOpts(2, (char **) args);
+        ensure_exit(3, [](){ opt<double>("n"); });
+    }
+
+    /* Well-formed values still parse, including exponential notation. */
+    struct { const char *value; int expected; } good[] = {
+        {"5", 5}, {"-42", -42}, {"0", 0}, {"1e3", 1000}, {"-2e2", -200},
+    };
+    for (size_t i = 0; i < sizeof(good) / sizeof(good[0]); i++) {
+        std::string arg = std::string("-n=") + good[i].value;
+        const char *args[] = {"gen", arg.c_str()};
+        prepareOpts(2, (char **) args);
+        ensure(opt<int>("n") == good[i].expected);
+    }
+
+    {
+        const char *args[] = {"gen", "-n=1.5e-2"};
+        prepareOpts(2, (char **) args);
+        ensure(opt<double>("n") > 0.0149 && opt<double>("n") < 0.0151);
+    }
 }

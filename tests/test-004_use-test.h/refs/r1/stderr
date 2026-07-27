@@ -63,6 +63,24 @@ FAIL Opts: expected typical exponential notation but 'true' found
 FAIL Opts: unknown key 'missing'
 FAIL Opts: unknown key 'missing'
 FAIL Opts: unknown key 'missing'
+FAIL Opts: expected integer but '-' found
+FAIL Opts: expected float number but '-' found
+FAIL Opts: expected integer but '.' found
+FAIL Opts: expected float number but '.' found
+FAIL Opts: expected integer but '-.' found
+FAIL Opts: expected float number but '-.' found
+FAIL Opts: expected float number but '-' found
+FAIL Opts: expected float number but '-' found
+FAIL Opts: expected float number but '-' found
+FAIL Opts: expected float number but '-' found
+FAIL Opts: expected float number but '.' found
+FAIL Opts: expected float number but '.' found
+FAIL Opts: expected integer but '-' found
+FAIL Opts: expected integer but '-' found
+FAIL Opts: expected typical exponential notation but '1e+' found
+FAIL Opts: expected typical exponential notation but '1e+' found
+FAIL Opts: expected integer but '+' found
+FAIL Opts: expected float number but '+' found
 FAIL Unexpected serialized TestResultVerdict
 FAIL Invalid TestResult serialization: expected exactly 12 items
 FAIL Invalid TestResult serialization: expected integer testIndex but 'x' found

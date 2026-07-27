@@ -27,7 +27,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.48"
+#define VERSION "0.9.49"
 
 /*
  * Mike Mirzayanov
@@ -58,6 +58,9 @@
  *           serialization no longer throws a raw const char*, deserialized
  *           TestResult fields are validated, and the escape codec no longer
  *           drops CR.
+ *   0.9.49  Fixed undefined behaviour in the option parser: a value with no
+ *           digits in its mantissa, such as -n=-e-5, wrote past the start of a
+ *           string. A bare sign is now rejected instead of parsing as 0.
  *   0.9.48  Version 2 also fixes command-line seeding: versions 0 and 1 read
  *           argument bytes as char, so any byte >= 0x80 seeds differently on
  *           x86 than on ARM and the same command line produces different tests
@@ -93,6 +96,10 @@
  */
 
 const char *latestFeatures[] = {
+        "Fixed undefined behaviour in the opts parser: a value whose mantissa had no digits, "
+                "such as -n=-e-5, left an empty mantissa and built an iterator before begin(). "
+                "A bare sign is now rejected instead of parsing as 0 (opt<int> on -n=- used to "
+                "return 0 silently)",
         "Random generator version 2 also fixes command-line seeding: argument bytes are read "
                 "through unsigned char (versions 0 and 1 read them as signed char on x86 and MSVC "
                 "but unsigned on ARM, so a byte >= 0x80 seeded differently per architecture) and "
@@ -5719,10 +5726,18 @@ std::string parseExponentialOptValue(const std::string &s) {
         num = num.substr(1);
     optValueToLongDouble(num);
     bool minus = false;
-    if (num[0] == '-') {
+    if (!num.empty() && num[0] == '-') {
         minus = true;
         num = num.substr(1);
     }
+    /*
+     * optValueToLongDouble already rejects a mantissa with no digits, so num
+     * cannot be empty here. Re-checked because the loops below index num[0]
+     * and num.length() - 1 directly: an empty mantissa used to evaluate
+     * num.insert(num.begin() - 1, '.'), i.e. an iterator before begin().
+     */
+    if (num.empty())
+        __testlib_fail("Opts: expected typical exponential notation but '" + compress(s) + "' found");
     for (int i = 0; i < +ne; i++) {
         size_t sep = num.find('.');
         if (sep == std::string::npos)
@@ -5771,12 +5786,17 @@ T optValueToIntegral(const std::string &s_, bool nonnegative) {
         sign = -1;
         pos++;
     }
+    size_t digitCount = 0;
     for (size_t i = pos; i < s.length(); i++) {
         if (s[i] < '0' || s[i] > '9')
             __testlib_fail("Opts: expected integer but '" + compress(s_) + "' found");
+        digitCount++;
         value = T(value * 10 + s[i] - '0');
         about = about * 10 + s[i] - '0';
     }
+    /* A bare sign has no digits at all; without this it parsed as 0. */
+    if (digitCount == 0)
+        __testlib_fail("Opts: expected integer but '" + compress(s_) + "' found");
     value *= sign;
     about *= sign;
     if (fabsl(value - about) > 0.1)
@@ -5797,6 +5817,7 @@ long double optValueToLongDouble(const std::string &s_) {
     }
     bool period = false;
     long double mul = 1.0;
+    size_t digitCount = 0;
     for (size_t i = pos; i < s.length(); i++) {
         if (s[i] == '.') {
             if (period)
@@ -5810,11 +5831,16 @@ long double optValueToLongDouble(const std::string &s_) {
             mul *= 10.0;
         if (s[i] < '0' || s[i] > '9')
             __testlib_fail("Opts: expected float number but '" + compress(s_) + "' found");
+        digitCount++;
         if (period)
             value += (s[i] - '0') / mul;
         else
             value = value * 10 + s[i] - '0';
     }
+    /* "-", ".", "-." and friends have no digits; without this they parsed as 0
+       and, via parseExponentialOptValue, left an empty mantissa to shift. */
+    if (digitCount == 0)
+        __testlib_fail("Opts: expected float number but '" + compress(s_) + "' found");
     value *= sign;
     return value;
 }

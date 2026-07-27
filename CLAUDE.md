@@ -2,7 +2,7 @@
 
 ## What this repository is
 
-**testlib 0.9.48** — a single-header C++ library (`testlib.h`, ~6000 lines,
+**testlib 0.9.49** — a single-header C++ library (`testlib.h`, ~6000 lines,
 MIT) for preparing competitive programming problems: generators, validators,
 checkers, interactors and scorers.
 

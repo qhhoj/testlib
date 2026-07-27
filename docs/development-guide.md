@@ -344,7 +344,18 @@ as GitHub retires runner images — expect to keep doing that.
        --include=*.cpp . | grep -v '^./tests/lib/'
    ```
    then confirm each hit either includes `testlib.h` or is a comment.
-8. Remember that a docs-only commit will show CI as not-run, not as passing.
+8. **Do not use a Windows macro as an identifier.** `testlib.h` includes
+   `<windows.h>` on Windows, which pulls in `rpcndr.h`, which contains
+   `#define small char`. A variable named `small` becomes `char` and the
+   compiler reports something unrecognisable —
+   `C2628: 'std::vector<int,...>' followed by 'char' is illegal`, plus a bogus
+   complaint about structured bindings from the cascade. Other names in the
+   same family: `hyper`, `boolean`, `interface`, `near`, `far`, `pascal`,
+   `IN`, `OUT`, `OPTIONAL`, `ERROR`, `DELETE`, `CONST`. `min`/`max` are safe
+   because `testlib.h` defines `NOMINMAX`. **Only the Windows jobs catch
+   this**, and only MSVC and Windows clang, so it can sit unnoticed for a
+   while if those jobs are being cancelled by fail-fast.
+9. Remember that a docs-only commit will show CI as not-run, not as passing.
 
 Things that are load-bearing and easy to break by accident:
 

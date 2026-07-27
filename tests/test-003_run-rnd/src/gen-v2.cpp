@@ -26,11 +26,13 @@ int main(int argc, char *argv[]) {
         bits += char('0' + rnd.next(0, 1));
     println(bits);
 
-    /* Small ranges: these read the low bits of the 63-bit draw. */
-    vector<int> small(n);
+    /* Small ranges: these read the low bits of the 63-bit draw.
+       Not named "small": <windows.h>, which testlib.h includes on Windows,
+       pulls in rpcndr.h, which does #define small char. */
+    vector<int> smallRange(n);
     for (int i = 0; i < n; i++)
-        small[i] = rnd.next(0, 3);
-    println(small);
+        smallRange[i] = rnd.next(0, 3);
+    println(smallRange);
 
     /* The int overload, which uses a different code path. */
     vector<int> viaInt(n);

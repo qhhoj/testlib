@@ -4,7 +4,7 @@ An audit of `testlib.h` for bugs, ambiguities and security issues, with a
 prioritised plan for addressing them.
 
 Started against **v0.9.45** (6252 lines, commit `1e4e8a2`). Line numbers are
-kept current with the working tree — they now refer to **v0.9.46** (6338
+kept current with the working tree — they now refer to **v0.9.49** (6461
 lines). Re-check them after any rebase on upstream.
 
 **Fixed so far — 0.9.47 / 0.9.48:** R-01 (`rnd.next(0, 1)` repeated every

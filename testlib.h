@@ -58,17 +58,17 @@
  *           serialization no longer throws a raw const char*, deserialized
  *           TestResult fields are validated, and the escape codec no longer
  *           drops CR.
- *   0.9.49  Fixed undefined behaviour in the option parser: a value with no
- *           digits in its mantissa, such as -n=-e-5, wrote past the start of a
- *           string. A bare sign is now rejected instead of parsing as 0.
- *   0.9.48  Version 2 also fixes command-line seeding: versions 0 and 1 read
- *           argument bytes as char, so any byte >= 0x80 seeds differently on
- *           x86 than on ARM and the same command line produces different tests
- *           per machine.
  *   0.9.47  Added random generator version 2, registerGen(argc, argv, 2).
  *           Versions 0 and 1 return the low bits of the 48-bit LCG state from
  *           63-bit draws, so rnd.next(0, 1) repeats every 65536 calls there.
  *           Versions 0 and 1 are unchanged and remain byte-identical.
+ *   0.9.48  Version 2 also fixes command-line seeding: versions 0 and 1 read
+ *           argument bytes as char, so any byte >= 0x80 seeds differently on
+ *           x86 than on ARM and the same command line produces different tests
+ *           per machine.
+ *   0.9.49  Fixed undefined behaviour in the option parser: a value with no
+ *           digits in its mantissa, such as -n=-e-5, wrote past the start of a
+ *           string. A bare sign is now rejected instead of parsing as 0.
  *
  * See plan.md in the repository root for the full audit and the remaining
  * known defects.

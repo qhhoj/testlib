@@ -21,8 +21,9 @@ read the [usage guide](usage-guide.md) instead.
 - Upstream: `https://github.com/MikeMirzayanov/testlib`. This checkout's
   `origin` is the fork `https://github.com/qhhoj/testlib.git`.
 - Forked from upstream at `1e4e8a2` (0.9.45), 457 commits back to 2008-09-14.
-  **This fork now diverges:** 0.9.46 fixes the scorer API, and 0.9.47/0.9.48 add
-  random generator version 2 — see `plan.md`.
+  **This fork now diverges:** 0.9.46 fixes the scorer API, 0.9.47/0.9.48 add
+  random generator version 2, and 0.9.49 fixes the option parser — see
+  `plan.md`.
 - The library is used by Codeforces, the Russian National Olympiad in
   Informatics, and ICPC regionals; Polygon (the problem-preparation system)
   is built around it.
@@ -302,7 +303,27 @@ as GitHub retires runner images — expect to keep doing that.
 4. If you added or changed a ref-based test, the first local run generates
    `refs/*`. **Read them, then commit them** — CI cannot generate them.
 5. Bump `VERSION` and prepend to `latestFeatures[]` for any user-visible
-   change.
+   change. The version is duplicated in seven places and they drift easily —
+   update **all** of them, and note that the two fork changelogs are in
+   **ascending** order (oldest first) while `latestFeatures[]` is descending:
+
+   | File | What to update |
+   | --- | --- |
+   | `testlib.h` | `#define VERSION`, a new `latestFeatures[]` entry (prepend), and a row in the `NOTICE OF MODIFICATION` block (append) |
+   | `README.md` | "this copy is **0.9.xx**" and a row in the fork table (append) |
+   | `plan.md` | the "line numbers refer to v0.9.xx (N lines)" header, and the fixed-so-far note |
+   | `docs/usage-guide.md` | "This guide describes **testlib 0.9.xx**" and the pattern-table preamble |
+   | `docs/development-guide.md` | the version at the top, the anatomy-table preamble and its `VERSION` row, the divergence note, and the line-number caveat in §8 |
+   | `docs/README.md` | the line-number caveat |
+   | `CLAUDE.md` | the one-line description |
+
+   Check with:
+   ```sh
+   grep -rn "0\.9\.[0-9]\+" --include=*.md --include=*.h . \
+       | grep -v "^./tests/lib/"
+   ```
+   `tests/lib/testlib.h` is excluded deliberately: it is pinned at
+   `0.9.40-SNAPSHOT` and must never be updated.
 6. If you touched anything a sample demonstrates, update the sample in
    `checkers/` / `validators/` / `generators/` / `interactors/` — they are all
    compiled by `test-000_compile-all-cpp`.
@@ -329,4 +350,4 @@ Things that are load-bearing and easy to break by accident:
 - Keep example sources compiling under the repo's own flags
   (`-std=c++17 -Wpedantic -Werror -O2 -I<repo-root>`).
 - Cite `file:line` for claims about `testlib.h`, and verify them — the line
-  numbers here are for 0.9.46 and will drift.
+  numbers here are for 0.9.49 and will drift.

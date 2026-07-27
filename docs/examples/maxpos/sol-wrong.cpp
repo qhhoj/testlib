@@ -1,22 +1,31 @@
 /* MAXPOS deliberately wrong solution: always answers index 1.
-   Used to demonstrate a "wrong answer" verdict from the checker. */
+   Used to demonstrate a "wrong answer" verdict from the checker.
 
-#include <cstdio>
+   Uses iostream rather than scanf for the reason given in sol-correct.cpp. */
+
+#include <iostream>
 
 int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+
     int t;
-    if (scanf("%d", &t) != 1)
+    if (!(std::cin >> t))
         return 1;
+
     while (t--) {
         int n;
-        if (scanf("%d", &n) != 1)
+        if (!(std::cin >> n))
             return 1;
+
         for (int i = 0; i < n; i++) {
             int x;
-            if (scanf("%d", &x) != 1)
+            if (!(std::cin >> x))
                 return 1;
         }
-        printf("1\n");
+
+        std::cout << 1 << "\n";
     }
+
     return 0;
 }

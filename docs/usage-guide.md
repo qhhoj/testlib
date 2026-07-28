@@ -3,7 +3,7 @@
 How to use testlib to prepare a competitive programming problem: generators,
 validators, checkers, interactors and scorers.
 
-This guide describes **testlib 0.9.51** as vendored in this repository
+This guide describes **testlib 0.9.52** as vendored in this repository
 (`testlib.h`, single header, MIT). Line references point at that file.
 
 - [1. The pieces of a problem package](#1-the-pieces-of-a-problem-package)
@@ -692,14 +692,12 @@ if (!pnum.matches(token)) quitf(_pe, "…");
 
 ### It looks like regex and is not — read this before writing one
 
-These are measured behaviours of 0.9.51, each pinned by a test in
+These are measured behaviours of 0.9.52, each pinned by a test in
 `tests/test-004_use-test.h/tests/test-pattern-defects.cpp`. Full detail and
 fix plans are in [`plan.md`](../plan.md).
 
 | You write | You might expect | You actually get |
 | --- | --- | --- |
-| `[a-z]{3,}` | 3 or more | **exactly 3** — the open-ended form is not supported and does not warn |
-| `[a-z]{1O}` (letter O) | an error | **`{1}`** — count parsing stops at the first non-digit and ignores the rest |
 | `[a-z ]+` | letters and spaces | **`[a-z]+`** — spaces are stripped *everywhere*, including inside `[...]` |
 | `No solution` | that literal string | **`Nosolution`** — same cause; escape it as `No\\ solution` |
 | `\d+` | digits | **runs of the letter `d`** — there are no `\d`/`\w`/`\s`/`\n`/`\t` escapes |
@@ -711,6 +709,26 @@ first part takes the longest run it can and is never retried shorter, so
 `[0-9]+0` ("a number ending in zero") can never match. A group may be preceded
 by other elements — `x(ab)`, `[0-9](a|b)` are fine — but never followed by
 one.
+
+#### Repetition counts (changed in 0.9.52)
+
+A `{...}` count must be either one whole number or two separated by a comma,
+and each must fit in `int`. Anything else is a `_fail` at construction:
+
+| Pattern | Result |
+| --- | --- |
+| `[a-z]{3}`, `[a-z]{3,8}` | fine |
+| `[a-z]{3,}` | **fails** — there is no open-ended form; write `{3,100}` |
+| `[a-z]{,5}` | **fails** — likewise, write `{0,5}` |
+| `[a-z]{1O}` (letter O), `{1e9}`, `{3x}`, `{1;5}` | **fails** — no trailing garbage |
+| `[a-z]{99999999999}` | **fails** — does not fit in `int` |
+
+Before 0.9.52 every row above except `{,5}` was accepted silently: `{3,}` meant
+exactly 3, and each malformed count meant `{1}`, so a single typo in a length
+bound turned a validator into one that accepted only short tokens. Use `*` or
+`+` when you genuinely want an unbounded count in a *checker*; in a validator
+prefer an explicit upper bound, since that is the bound you are there to
+enforce.
 
 ## 9. Verdicts and exit codes
 
@@ -859,7 +877,9 @@ problem setter:
   `registerGen(argc, argv, 2)`. Versions 0 and 1 keep the old behaviour on
   purpose, so existing packages still reproduce. *(plan.md R-01, R-02)*
 - **The pattern language is not regex** — see the table in
-  [§8](#8-patterns). *(P-01, P-02, P-03, I-06, A-01, A-02)*
+  [§8](#8-patterns). *(P-03, I-06, A-01, A-02)*
+- **`{3,}` and malformed counts now `_fail` instead of being accepted.**
+  Changed in 0.9.52; `{3,}` used to mean exactly 3. *(P-01, P-02)*
 - **`if (has_opt("flag"))` makes your generator fail at exit** with
   `Opts: unused key`. Use `opt<bool>("flag", false)` instead. *(O-02)*
 - **`doubleCompare` accepts anything above 1e300** as equal to any other value

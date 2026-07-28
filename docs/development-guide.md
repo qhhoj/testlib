@@ -17,14 +17,15 @@ read the [usage guide](usage-guide.md) instead.
 
 ## 1. What this repository is
 
-- **testlib 0.9.51**, MIT licensed, copyright Mike Mirzayanov.
+- **testlib 0.9.52**, MIT licensed, copyright Mike Mirzayanov.
 - Upstream: `https://github.com/MikeMirzayanov/testlib`. This checkout's
   `origin` is the fork `https://github.com/qhhoj/testlib.git`.
 - Forked from upstream at `1e4e8a2` (0.9.45), 457 commits back to 2008-09-14.
   **This fork now diverges:** 0.9.46 fixes the scorer API, 0.9.47/0.9.48 add
   random generator version 2, 0.9.49 fixes the option parser, 0.9.50
-  fixes a heap overflow in skipChar(), and 0.9.51 fixes the end-of-input
-  sentinel — see `plan.md`.
+  fixes a heap overflow in skipChar(), 0.9.51 fixes the end-of-input
+  sentinel, and 0.9.52 makes malformed pattern repetition counts fail loudly
+  — see `plan.md`.
 - The library is used by Codeforces, the Russian National Olympiad in
   Informatics, and ICPC regionals; Polygon (the problem-preparation system)
   is built around it.
@@ -69,7 +70,7 @@ including markdown. Do not "fix" this.
 
 ## 3. Anatomy of `testlib.h`
 
-Approximate map (line numbers as of 0.9.51):
+Approximate map (line numbers as of 0.9.52):
 
 | Lines | Contents |
 | --- | --- |
@@ -382,4 +383,4 @@ Things that are load-bearing and easy to break by accident:
 - Keep example sources compiling under the repo's own flags
   (`-std=c++17 -Wpedantic -Werror -O2 -I<repo-root>`).
 - Cite `file:line` for claims about `testlib.h`, and verify them — the line
-  numbers here are for 0.9.51 and will drift.
+  numbers here are for 0.9.52 and will drift.

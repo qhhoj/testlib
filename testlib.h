@@ -27,7 +27,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.51"
+#define VERSION "0.9.52"
 
 /*
  * Mike Mirzayanov
@@ -88,6 +88,15 @@
  *           than char. THIS IS A SOURCE-LEVEL BREAK for code that assigns
  *           those results to a char and compares against EOFC, or that relies
  *           on bytes >= 0x80 coming back negative.
+ *   0.9.52  Made malformed pattern repetition counts fail instead of silently
+ *           weakening the pattern. "{3,}" dropped its empty tail part and so
+ *           meant exactly 3, rejecting every longer token; it now fails at
+ *           construction, like "{,5}" already did. Counts were also parsed
+ *           with sscanf("%d"), which ignored trailing garbage and made
+ *           "{1O}", "{1e9}" and "{3x}" all mean "{1}", while "{99999999999}"
+ *           was undefined behaviour. Counts must now be a whole number that
+ *           fits in int. THIS IS A BEHAVIOUR BREAK for patterns using "{n,}",
+ *           which must be given an explicit upper bound, e.g. "{3,100}".
  *
  * See plan.md in the repository root for the full audit and the remaining
  * known defects.
@@ -115,6 +124,12 @@
  */
 
 const char *latestFeatures[] = {
+        "Malformed pattern repetition counts now fail instead of silently weakening the "
+                "pattern: \"{3,}\" dropped its empty tail part and meant exactly 3 rather than "
+                "\"3 or more\", and sscanf(\"%d\") ignored trailing garbage, so \"{1O}\", "
+                "\"{1e9}\" and \"{3x}\" all meant \"{1}\" while \"{99999999999}\" was undefined "
+                "behaviour. A count must now be a whole number that fits in int, and \"{n,}\" "
+                "needs an explicit upper bound such as \"{3,100}\"",
         "Fixed the end-of-input sentinel: EOFC was 255, a value a real byte can hold. "
                 "isEof(inf.curChar()) was therefore always false wherever char is signed (x86, "
                 "MSVC), so the documented read-until-EOF loop never terminated, and a literal "
@@ -1533,6 +1548,32 @@ std::string pattern::next(random_t &rnd) const {
     return result;
 }
 
+/* Parses one "{...}" count part in full. Unlike sscanf("%d") this rejects
+ * trailing garbage ("1O", "1e9", "3x") and values outside int, both of which
+ * used to be accepted and silently weaken the pattern to {1}. */
+static bool __pattern_parseCount(const std::string &part, int &result) {
+    size_t pos = 0;
+    bool negative = false;
+
+    if (pos < part.length() && (part[pos] == '-' || part[pos] == '+'))
+        negative = (part[pos++] == '-');
+
+    if (pos >= part.length())
+        return false;
+
+    long long value = 0;
+    for (; pos < part.length(); pos++) {
+        if (part[pos] < '0' || part[pos] > '9')
+            return false;
+        value = value * 10 + (part[pos] - '0');
+        if (value > 2147483647LL)
+            return false;
+    }
+
+    result = int(negative ? -value : value);
+    return true;
+}
+
 static void __pattern_scanCounts(const std::string &s, size_t &pos, int &from, int &to) {
     if (pos >= s.length()) {
         from = to = 1;
@@ -1552,8 +1593,10 @@ static void __pattern_scanCounts(const std::string &s, size_t &pos, int &from, i
                 part += __pattern_getChar(s, pos);
         }
 
-        if (part != "")
-            parts.push_back(part);
+        /* Push the tail unconditionally: dropping an empty one made "{3,}"
+         * collapse to the single part "3", i.e. silently mean exactly 3. It
+         * now reaches the empty-part check below and fails, like "{,5}". */
+        parts.push_back(part);
 
         if (!__pattern_isCommandChar(s, pos, '}'))
             __testlib_fail("pattern: Illegal pattern (or part) \"" + s + "\"");
@@ -1569,11 +1612,7 @@ static void __pattern_scanCounts(const std::string &s, size_t &pos, int &from, i
             if (parts[i].length() == 0)
                 __testlib_fail("pattern: Illegal pattern (or part) \"" + s + "\"");
             int number;
-#ifdef _MSC_VER
-            if (sscanf_s(parts[i].c_str(), "%d", &number) != 1)
-#else
-            if (std::sscanf(parts[i].c_str(), "%d", &number) != 1)
-#endif
+            if (!__pattern_parseCount(parts[i], number))
                 __testlib_fail("pattern: Illegal pattern (or part) \"" + s + "\"");
             numbers.push_back(number);
         }

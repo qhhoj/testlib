@@ -13,8 +13,8 @@ Running test 'rnd_version_2_has_no_short_period'                                
 Running test 'rnd_versions_0_and_1_are_unaffected_by_version_2'                                     OK
 Running test 'rnd_version_2_seeding'                                                                OK
 Running test 'rnd_int_overload_is_not_periodic'                                                     OK
-Running test 'pattern_open_ended_count_means_exact'                                                 OK
-Running test 'pattern_count_accepts_trailing_garbage'                                               OK
+Running test 'pattern_open_ended_count_fails_loudly'                                                OK
+Running test 'pattern_count_rejects_trailing_garbage'                                               OK
 Running test 'pattern_group_must_be_trailing'                                                       OK
 Running test 'pattern_greedy_without_backtracking'                                                  OK
 Running test 'pattern_strips_spaces_everywhere'                                                     OK

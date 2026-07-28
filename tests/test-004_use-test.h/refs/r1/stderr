@@ -51,7 +51,17 @@ FAIL Expected unsigned integer, but "1 2" found ()
 FAIL Expected unsigned integer, but "-0" found ()
 FAIL Expected unsigned integer, but "--0" found ()
 FAIL Expected unsigned integer, but "-00" found ()
+FAIL pattern: Illegal pattern (or part) "[a-z]{3,}"
 FAIL pattern: Illegal pattern (or part) "[a-z]{,5}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{3,}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{1O}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{1e9}"
+FAIL pattern: Illegal pattern (or part) "a{3x}"
+FAIL pattern: Illegal pattern (or part) "[0-9]{1;5}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{2,5x}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{x}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{99999999999}"
+FAIL pattern: Illegal pattern (or part) "[a-z]{2,99999999999}"
 FAIL pattern: Illegal pattern (or part) "ab)(cd)"
 FAIL pattern: Illegal pattern (or part) "ab)x"
 FAIL pattern: Illegal pattern (or part) "a|b)(c|d)"

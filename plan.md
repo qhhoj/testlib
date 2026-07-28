@@ -7,13 +7,15 @@ Started against **v0.9.45** (6252 lines, commit `1e4e8a2`). Line numbers below
 refer to **v0.9.51** (6543 lines) and were shifted wholesale when 0.9.51 moved
 code, so they stay consistent with each other.
 
-> **Known drift: the cited lines run roughly 40 lines low.** Measured against
+> **Known drift: the cited lines run 40 to 80 lines low.** Measured against
 > 0.9.50, `lowerBitCount` sat at 851 where R-02 cites 813, the V-01 guard at
 > 2687 where V-01 cites 2647, and `has_opt` at 5877 where O-02 cites 5833 —
-> +38 to +44 across the entries sampled, in the same direction. The drift
-> predates 0.9.51 and was inherited from an earlier release. **Search for the
-> named construct rather than trusting the number**, and re-anchor an entry's
-> citations when you fix it. Re-check everything after any rebase on upstream.
+> +38 to +44 across the entries sampled, in the same direction. That drift
+> predates 0.9.51 and was inherited from an earlier release. 0.9.52 then added
+> 39 lines: +13 to everything past the changelog header, and a further +26 to
+> everything past `__pattern_scanCounts`. **Search for the named construct
+> rather than trusting the number**, and re-anchor an entry's citations when
+> you fix it. Re-check everything after any rebase on upstream.
 
 **Fixed so far — 0.9.47 / 0.9.48:** R-01 (`rnd.next(0, 1)` repeated every
 65536 draws) and R-07 (`setSeed(argc, argv)` seeded differently per
@@ -25,6 +27,34 @@ so it is a compatibility surface too — its stream is now frozen.
 > **Version 2's output is settled. Do not change it again.** Both rnd fixes
 > landed before any package could be generated with it. Any further correction
 > to the random stream needs a version 3.
+
+**Fixed — 0.9.52:** P-01 and P-02, both in `__pattern_scanCounts`.
+
+*P-01.* The scan loop pushed the tail part only `if (part != "")`, so `"{3,}"`
+collapsed to the single part `"3"` and meant **exactly 3** — a validator
+written as `readToken("[a-z]{3,}", "s")` rejected every token longer than 3,
+silently. The tail is now pushed unconditionally, so an empty one reaches the
+existing empty-part check and fails, symmetric with `{,5}`. **Failing loudly
+was chosen over supporting `{n, INT_MAX}`:** it matches `{,5}`, and it forces
+the author to state the upper bound a validator exists to enforce, rather than
+silently converting existing `{3,}` patterns from exact-3 to unbounded.
+
+*P-02.* Counts were parsed with `sscanf("%d")`, which only checks that *a*
+number was read, never that the part was consumed. `{1O}` (capital O), `{1e9}`,
+`{3x}` and `{1;5}` all meant `{1}`, and `{99999999999}` was `sscanf` UB.
+Replaced by `__pattern_parseCount`, which requires the whole part to be digits
+(after an optional sign) and to fit in `int`. Hand-rolled rather than `strtol`
+to avoid `errno` and the platform-dependent width of `long`.
+
+Both are a **behaviour break** for patterns that used `{n,}` or contained a
+count typo, hence the `VERSION` bump. Documented in `docs/usage-guide.md` §8.
+`tests/test-004_use-test.h/tests/test-pattern-defects.cpp` now asserts the
+desired behaviour in `pattern_open_ended_count_fails_loudly` and
+`pattern_count_rejects_trailing_garbage`; both fail against the pre-fix header.
+
+Deliberately **not** fixed here: **P-07** (`{-5,3}` is accepted and behaves
+like `{0,3}`) — `__pattern_parseCount` still accepts a leading `-`, so that
+finding is unchanged rather than silently swept up.
 
 **Fixed — 0.9.51:** I-01 and I-10, both from `EOFC == 255` — a sentinel value a
 real byte can hold. Two distinct failures, one root cause.
@@ -186,52 +216,6 @@ compiling pre-0.8.7 generators, including via the deprecated two-argument
 **documentation only**. `registerGen(..., 0)` and `(..., 1)` exist to reproduce
 existing packages; new generators should use version 2, which never reads
 low-order state bits. Documented in `docs/usage-guide.md` §3.
-
----
-
-### P-01 · `{n,}` silently means `{n,n}` · HIGH · measured
-
-**Where:** `testlib.h:1510-1518`, `1543-1544`
-
-**What:** the scan loop pushes `part` when it hits `,`, then the tail is pushed
-only `if (part != "")`. For `"{3,}"` the tail is empty, so `parts == {"3"}`,
-`parts.size() == 1`, and `from = to = 3`.
-
-**Trigger:** `inf.readToken("[a-z]{3,}", "s")` — intended as "3 or more
-letters" — accepts **only** length-3 tokens and rejects every valid longer one.
-`rnd.next("[a-z]{3,}")` always produces exactly 3 characters.
-
-**Impact:** silent inversion of standard regex semantics inside a validator. No
-diagnostic. Note that the symmetric `{,5}` *does* fail loudly (`1531-1532`),
-which makes the asymmetry look accidental rather than designed.
-
-**Pinned by:** `tests/test-004_use-test.h/tests/test-pattern-defects.cpp`
-
-**Fix:** either support `{n,}` as `{n, INT_MAX}` (and then `pattern::next` must
-reject it like `*`, see `1481-1483`), or `__testlib_fail` on it. Failing loudly
-is the safer choice and matches `{,5}`.
-
----
-
-### P-02 · pattern counts accept trailing garbage · HIGH · measured
-
-**Where:** `testlib.h:1533-1540`
-
-**What:** `sscanf(parts[i].c_str(), "%d", &number) != 1` only checks that *a*
-number was parsed; it never verifies the whole part was consumed.
-
-**Trigger:** all of these silently become `{1}`:
-`[a-z]{1O}` (capital O for zero) · `[a-z]{1e9}` · `a{3x}` · `[0-9]{1;5}`.
-Additionally `{99999999999}` is `sscanf` UB — the value is not representable in
-`int`.
-
-**Impact:** a typo in a length bound silently weakens a validator, which then
-accepts short or malformed tokens.
-
-**Pinned by:** `tests/test-004_use-test.h/tests/test-pattern-defects.cpp`
-
-**Fix:** parse with `strtol` and require the entire part to be consumed and in
-range; `__testlib_fail` otherwise.
 
 ---
 
@@ -680,8 +664,9 @@ checker, so they belong in `docs/usage-guide.md`.
 whole pattern before parsing, so `[a-z ]+` silently becomes `[a-z]+` and
 `pattern("No solution")` matches nothing. Pinned as intended behaviour by
 `tests/test-004_use-test.h/tests/test-pattern.cpp:24-25`. This is the root cause
-that makes **P-01**, **P-02**, **P-03** and **I-06** dangerous rather than merely
-surprising: the pattern language looks like regex and is not.
+that makes **P-03** and **I-06** dangerous rather than merely surprising — and
+that made **P-01** and **P-02** so before 0.9.52: the pattern language looks
+like regex and is not.
 
 ### A-02 · no escape sequences · measured
 `testlib.h:1426-1433`. `__pattern_getChar` returns the raw character after a

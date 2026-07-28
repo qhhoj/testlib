@@ -1,42 +1,53 @@
 /*
  * Pins CURRENT (defective or surprising) pattern behaviour.
  *
- * See plan.md: P-01 ({n,} means {n,n}), P-02 (counts accept trailing garbage),
- * P-03 (a group followed by anything becomes literal text), I-06 (greedy
- * matching with no backtracking), A-01 (spaces are stripped everywhere),
- * A-02 (no escape sequences).
+ * See plan.md: P-03 (a group followed by anything becomes literal text), I-06
+ * (greedy matching with no backtracking), A-01 (spaces are stripped
+ * everywhere), A-02 (no escape sequences).
  *
- * These assertions describe bugs, not desired behaviour. Flip each one when
+ * Those assertions describe bugs, not desired behaviour. Flip each one when
  * the corresponding plan.md entry is fixed.
+ *
+ * The first two tests are the exception: P-01 and P-02 are FIXED as of 0.9.52
+ * and now assert the desired result.
  */
 
-TEST(pattern_open_ended_count_means_exact) {
-    /* P-01: "{3,}" should mean "3 or more" but the empty tail part is dropped,
-       leaving a single number, so it means exactly 3. */
-    ensure(pattern("[a-z]{3,}").matches("abc"));
-    ensure(!pattern("[a-z]{3,}").matches("abcd"));
-    ensure(!pattern("[a-z]{3,}").matches("abcdefgh"));
-
-    /* Generation agrees: always exactly 3 characters. */
-    rnd.setSeed(12345);
-    for (int i = 0; i < 20; i++)
-        ensure(rnd.next("[a-z]{3,}").length() == 3);
-
-    /* The symmetric form does fail loudly, which is what {3,} should do. */
+TEST(pattern_open_ended_count_fails_loudly) {
+    /* P-01 fixed: "{3,}" used to drop its empty tail part, leaving a single
+       number, so it silently meant exactly 3 and rejected every longer token.
+       It now fails at construction, symmetric with "{,5}". */
+    ensure_exit(3, [](){ pattern("[a-z]{3,}"); });
     ensure_exit(3, [](){ pattern("[a-z]{,5}"); });
+    ensure_exit(3, [](){ rnd.next("[a-z]{3,}"); });
+
+    /* An explicit upper bound is the way to say "3 or more", and it really
+       does accept the whole range. */
+    ensure(pattern("[a-z]{3,8}").matches("abc"));
+    ensure(pattern("[a-z]{3,8}").matches("abcdefgh"));
+    ensure(!pattern("[a-z]{3,8}").matches("ab"));
+    ensure(!pattern("[a-z]{3,8}").matches("abcdefghi"));
 }
 
-TEST(pattern_count_accepts_trailing_garbage) {
-    /* P-02: sscanf("%d") stops at the first non-digit and the rest is ignored,
-       so a typo silently weakens the pattern to {1}. */
-    ensure(pattern("[a-z]{1O}").matches("a"));        /* capital O, not zero */
-    ensure(!pattern("[a-z]{1O}").matches("ab"));
+TEST(pattern_count_rejects_trailing_garbage) {
+    /* P-02 fixed: sscanf("%d") stopped at the first non-digit and ignored the
+       rest, so a typo in a length bound silently weakened the pattern to {1}
+       instead of failing. */
+    ensure_exit(3, [](){ pattern("[a-z]{1O}"); });    /* capital O, not zero */
+    ensure_exit(3, [](){ pattern("[a-z]{1e9}"); });
+    ensure_exit(3, [](){ pattern("a{3x}"); });
+    ensure_exit(3, [](){ pattern("[0-9]{1;5}"); });   /* ';' is not ',' */
+    ensure_exit(3, [](){ pattern("[a-z]{2,5x}"); });  /* garbage in the tail */
+    ensure_exit(3, [](){ pattern("[a-z]{x}"); });     /* no digits at all */
 
-    ensure(pattern("[a-z]{1e9}").matches("a"));
-    ensure(!pattern("[a-z]{1e9}").matches("aa"));
+    /* A count too large for int is rejected rather than being sscanf UB. */
+    ensure_exit(3, [](){ pattern("[a-z]{99999999999}"); });
+    ensure_exit(3, [](){ pattern("[a-z]{2,99999999999}"); });
 
-    ensure(pattern("[0-9]{1;5}").matches("7"));       /* ';' is not ',' */
-    ensure(!pattern("[0-9]{1;5}").matches("77"));
+    /* Well-formed counts are unaffected. */
+    ensure(pattern("[a-z]{3}").matches("abc"));
+    ensure(!pattern("[a-z]{3}").matches("ab"));
+    ensure(pattern("[a-z]{2,4}").matches("abc"));
+    ensure(pattern("[a-z]{0,2}").matches(""));
 }
 
 TEST(pattern_group_must_be_trailing) {

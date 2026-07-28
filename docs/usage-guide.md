@@ -3,7 +3,7 @@
 How to use testlib to prepare a competitive programming problem: generators,
 validators, checkers, interactors and scorers.
 
-This guide describes **testlib 0.9.50** as vendored in this repository
+This guide describes **testlib 0.9.51** as vendored in this repository
 (`testlib.h`, single header, MIT). Line references point at that file.
 
 - [1. The pieces of a problem package](#1-the-pieces-of-a-problem-package)
@@ -308,6 +308,36 @@ validators; use `readDouble` in checkers.
 The vector forms (`readInts` and friends) require exactly one space between
 elements in strict mode, and report violations as `a[3]` rather than "the 4th
 integer", which is why they are preferred over a hand-rolled loop.
+
+### Reading one character at a time
+
+Below the token API there is a character-level one. **These return `int`, not
+`char`** — a byte comes back in `[0, 255]`, and end of input is `EOFC` (`-1`),
+a value no byte can take:
+
+```cpp
+int  inf.curChar();     // peek; does not advance
+int  inf.nextChar();    // read and advance
+int  inf.readChar();    // == nextChar()
+void inf.skipChar();    // advance without reading
+void inf.unreadChar(c); // push one back; takes int, pass what you read
+
+while (!isEof(inf.curChar())) {
+    int c = inf.nextChar();
+    ...
+}
+```
+
+Test for end of input with `isEof(c)`, never by comparing against a character
+literal. Store the result in an `int`: narrowing to `char` throws away the
+distinction between the byte `0xFF` and `EOFC` wherever `char` is signed, which
+is exactly the bug 0.9.51 fixed.
+
+> **Changed in 0.9.51.** `curChar()`, `nextChar()` and `readChar()` previously
+> returned `char` and `EOFC` was `255`. Code that assigned them to a `char` still
+> compiles, but was already broken: `isEof()` was permanently false on x86 and
+> the loop above never terminated. Code that expects bytes `>= 0x80` to come back
+> negative needs updating.
 
 ### Variable names earn their keep
 
@@ -662,7 +692,7 @@ if (!pnum.matches(token)) quitf(_pe, "…");
 
 ### It looks like regex and is not — read this before writing one
 
-These are measured behaviours of 0.9.50, each pinned by a test in
+These are measured behaviours of 0.9.51, each pinned by a test in
 `tests/test-004_use-test.h/tests/test-pattern-defects.cpp`. Full detail and
 fix plans are in [`plan.md`](../plan.md).
 

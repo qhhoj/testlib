@@ -32,7 +32,7 @@ demonstration helps.
   `<iostream>` / `<fstream>` instead. This is not reproducible on Linux or
   macOS — see the note in the development guide.
 - Cite `testlib.h:<line>` for claims about the library, and re-check them when
-  the version changes — the line numbers in these guides are for 0.9.50.
+  the version changes — the line numbers in these guides are for 0.9.51.
 
 ## Note
 

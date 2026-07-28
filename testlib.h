@@ -27,7 +27,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.50"
+#define VERSION "0.9.51"
 
 /*
  * Mike Mirzayanov
@@ -74,6 +74,20 @@
  *           without an intervening read ran off the end of the 2MB buffer and,
  *           on files larger than it, skipped within stale content instead of
  *           advancing through the file.
+ *   0.9.51  Fixed the end-of-input sentinel, which was 255 -- a value a real
+ *           byte can hold. Two consequences, both now fixed:
+ *           isEof(inf.curChar()) was always false wherever char is signed
+ *           (x86, x86-64, MSVC), because InStream::curChar() narrowed the
+ *           sentinel to char(255) == -1 and compared it against 255, so the
+ *           documented "read until EOF" loop never terminated; and a literal
+ *           0xFF byte on stdin was read as end-of-input by validators and
+ *           interactors, because getc returns 255 for it just as it does for
+ *           EOF.
+ *           EOFC is now -1, readers return bytes as unsigned char, and
+ *           InStream::curChar(), nextChar() and readChar() return int rather
+ *           than char. THIS IS A SOURCE-LEVEL BREAK for code that assigns
+ *           those results to a char and compares against EOFC, or that relies
+ *           on bytes >= 0x80 coming back negative.
  *
  * See plan.md in the repository root for the full audit and the remaining
  * known defects.
@@ -101,6 +115,12 @@
  */
 
 const char *latestFeatures[] = {
+        "Fixed the end-of-input sentinel: EOFC was 255, a value a real byte can hold. "
+                "isEof(inf.curChar()) was therefore always false wherever char is signed (x86, "
+                "MSVC), so the documented read-until-EOF loop never terminated, and a literal "
+                "0xFF byte on stdin was read as end-of-input by validators and interactors. "
+                "EOFC is now -1, readers report bytes as unsigned char, and InStream::curChar(), "
+                "nextChar() and readChar() return int instead of char (a source-level break)",
         "Fixed a heap buffer overflow in InStream::skipChar(): unlike every other accessor it "
                 "never refilled the buffer or checked bounds, so skipping characters without an "
                 "intervening read walked off the end of the 2MB buffer. A checker skipping a "
@@ -290,7 +310,12 @@ const char *latestFeatures[] = {
 #define CR ((char)13)
 #define TAB ((char)9)
 #define SPACE ((char)' ')
-#define EOFC (255)
+/*
+ * End-of-input sentinel. It must not be a value any real byte can take, or
+ * the readers cannot tell data from EOF -- see the 0.9.51 note above. Readers
+ * return real bytes as unsigned char, i.e. in [0, 255], so -1 is unambiguous.
+ */
+#define EOFC (-1)
 
 #ifndef OK_EXIT_CODE
 #   ifdef CONTESTER
@@ -1836,7 +1861,7 @@ public:
         if (pos >= s.length())
             return EOFC;
         else
-            return s[pos];
+            return (unsigned char) s[pos];
     }
 
     int nextChar() {
@@ -1844,7 +1869,7 @@ public:
             pos++;
             return EOFC;
         } else
-            return s[pos++];
+            return (unsigned char) s[pos++];
     }
 
     void skipChar() {
@@ -1885,6 +1910,13 @@ private:
     std::vector<int> readChars;
     std::vector<int> undoReadChars;
 
+    /*
+     * getc already returns a real byte as unsigned char in [0, 255] and EOF
+     * as -1, which is exactly the contract EOFC now expresses. This used to
+     * rewrite EOF to 255 -- the same value getc returns for a literal 0xFF
+     * data byte -- so one 0xFF byte on stdin faked end-of-input for every
+     * validator and interactor.
+     */
     inline int postprocessGetc(int getcResult) {
         if (getcResult != EOF)
             return getcResult;
@@ -2030,11 +2062,11 @@ private:
             return true;
     }
 
-    char increment() {
+    int increment() {
         char c;
         if ((c = buffer[bufferPos++]) == LF)
             line++;
-        return c;
+        return (unsigned char) c;
     }
 
 public:
@@ -2068,7 +2100,7 @@ public:
         if (!refill())
             return EOFC;
 
-        return isEof[bufferPos] ? EOFC : buffer[bufferPos];
+        return isEof[bufferPos] ? EOFC : (unsigned char) buffer[bufferPos];
     }
 
     int nextChar() {
@@ -2169,17 +2201,23 @@ struct InStream {
     /* Moves stream pointer to the first non-white-space character or EOF. */
     void skipBlanks();
 
-    /* Returns current character in the stream. Doesn't remove it from stream. */
-    char curChar();
+    /*
+     * Returns current character in the stream, as an unsigned char widened to
+     * int, or EOFC at end of input. Doesn't remove it from stream.
+     *
+     * Returns int, not char, so that EOFC stays distinguishable from a real
+     * 0xFF byte: use isEof(c) to test for end of input.
+     */
+    int curChar();
 
     /* Moves stream pointer one character forward. */
     void skipChar();
 
     /* Returns current character and moves pointer one character forward. */
-    char nextChar();
+    int nextChar();
 
     /* Returns current character and moves pointer one character forward. */
-    char readChar();
+    int readChar();
 
     /* As "readChar()" but ensures that the result is equal to given parameter. */
     char readChar(char c);
@@ -2187,8 +2225,13 @@ struct InStream {
     /* As "readChar()" but ensures that the result is equal to the space (code=32). */
     char readSpace();
 
-    /* Puts back the character into the stream. */
-    void unreadChar(char c);
+    /*
+     * Puts back the character into the stream.
+     *
+     * Takes int, to match curChar()/nextChar()/readChar(): pushing a byte back
+     * as a signed char would turn 0xFF into EOFC and fake end-of-input.
+     */
+    void unreadChar(int c);
 
     /* Reopens stream, you should not use it. */
     void reset(std::FILE *file = NULL);
@@ -3454,49 +3497,66 @@ void InStream::init(std::FILE *f, TMode mode) {
 void InStream::skipBom() {
     const std::string utf8Bom = "\xEF\xBB\xBF";
     size_t index = 0;
-    while (index < utf8Bom.size() && curChar() == utf8Bom[index]) {
+    /* Compare through unsigned char: every BOM byte is >= 0x80, and curChar()
+     * reports bytes in [0, 255] while std::string holds them as signed char. */
+    while (index < utf8Bom.size() && curChar() == int((unsigned char) utf8Bom[index])) {
         index++;
         skipChar();
     }
     if (index < utf8Bom.size()) {
         while (index != 0) {
-            unreadChar(utf8Bom[index - 1]);
+            unreadChar(int((unsigned char) utf8Bom[index - 1]));
             index--;
         }
     }
 }
 
-char InStream::curChar() {
-    return char(reader->curChar());
+int InStream::curChar() {
+    return reader->curChar();
 }
 
-char InStream::nextChar() {
-    return char(reader->nextChar());
+int InStream::nextChar() {
+    return reader->nextChar();
 }
 
-char InStream::readChar() {
+int InStream::readChar() {
     return nextChar();
 }
 
 char InStream::readChar(char c) {
     lastLine = reader->getLine();
-    char found = readChar();
-    if (c != found) {
-        if (!isEoln(found))
-            quit(_pe, ("Unexpected character '" + std::string(1, found) + "', but '" + std::string(1, c) +
+    int found = readChar();
+    /*
+     * Compare through unsigned char: readChar() now reports bytes in [0, 255],
+     * so a plain `c != found` would never match for c >= 0x80 where char is
+     * signed. EOFC is -1 and so matches no expected character, as intended.
+     */
+    if (int((unsigned char) c) != found) {
+        /*
+         * End of input is now distinguishable from a real byte, so report it
+         * as such. Previously EOFC narrowed to char(255) == -1, which meant
+         * readChar('\xFF') was *satisfied* by end of file, and every other
+         * expected character got the misleading "Unexpected character 'y'"
+         * naming a byte that was never in the stream.
+         */
+        if (isEof(found))
+            quit(_unexpected_eof, ("Unexpected end of file - character '" + std::string(1, c) +
+                                   "' expected").c_str());
+        else if (!isEoln(found))
+            quit(_pe, ("Unexpected character '" + std::string(1, char(found)) + "', but '" + std::string(1, c) +
                        "' expected").c_str());
         else
-            quit(_pe, ("Unexpected character " + ("#" + vtos(int(found))) + ", but '" + std::string(1, c) +
+            quit(_pe, ("Unexpected character " + ("#" + vtos(found)) + ", but '" + std::string(1, c) +
                        "' expected").c_str());
     }
-    return found;
+    return c;
 }
 
 char InStream::readSpace() {
     return readChar(' ');
 }
 
-void InStream::unreadChar(char c) {
+void InStream::unreadChar(int c) {
     reader->unreadChar(c);
 }
 

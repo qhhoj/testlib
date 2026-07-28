@@ -48,7 +48,8 @@ TEST(instream) {
     {
         InStream s(inf, "\xEF" "content");
         s.skipBom();
-        ensure(s.readChar() == '\xEF');
+        /* readChar() returns int in [0, 255], not a signed char: 0xEF, not -17. */
+        ensure(s.readChar() == 0xEF);
         ensure(s.readWord() == "content");
         ensure(s.eof());
     }

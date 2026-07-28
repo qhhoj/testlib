@@ -94,3 +94,6 @@ FAIL Invalid TestResult serialization: testIndex equals to -1, violates the rang
 FAIL Invalid TestResult serialization: timeConsumed equals to -5, violates the range [0, 9223372036854775807]
 FAIL Invalid TestResult serialization: memoryConsumed equals to -5, violates the range [0, 9223372036854775807]
 FAIL Invalid TestResult serialization: expected integer testIndex but '99999999999999999999' found
+FAIL Unexpected character 'þ', but 'ÿ' expected (based on )
+FAIL Unexpected end of file - character 'ÿ' expected (based on )
+FAIL Unexpected end of file - character ' ' expected (based on )

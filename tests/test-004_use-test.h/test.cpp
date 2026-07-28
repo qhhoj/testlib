@@ -24,6 +24,7 @@ using namespace std;
 
 /* Fixed behaviour: these assert the DESIRED result, not a pinned defect. */
 #include "tests/test-scorer-serialization.cpp"
+#include "tests/test-eofc.cpp"
 
 int main() {
     disableFinalizeGuard();

@@ -163,8 +163,17 @@ export VALGRIND="$VALGRIND"
 
 done=""
 if [[ "$machine" == "Windows" && ("$ARGS_CPP" == "" || "$ARGS_CPP" == "msvc") ]]; then
-  VS_RELEASES=("Professional" "Enterprise" "Community")
-  PROGRAM_FILES=("${PROGRAMFILES}" "${PROGRAMFILES} (x86)")
+  VS_RELEASES=("Professional" "Enterprise" "Community" "BuildTools" "Preview")
+  PROGRAM_FILES=()
+  for program_files_var in PROGRAMFILES ProgramW6432 ProgramFiles 'ProgramFiles(x86)'; do
+    program_files=$(printenv "$program_files_var" || true)
+    if [[ -n "$program_files" ]]; then
+      PROGRAM_FILES+=("$program_files")
+    fi
+  done
+  if [[ ${#PROGRAM_FILES[@]} -eq 0 ]]; then
+    PROGRAM_FILES=("/c/Program Files" "/c/Program Files (x86)")
+  fi
 
   for vs_release in "${VS_RELEASES[@]}"; do
     for program_files in "${PROGRAM_FILES[@]}"; do

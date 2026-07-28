@@ -888,6 +888,12 @@ problem setter:
   equal. *(I-04)*
 - **`readDouble()` returns `inf`** for input like `1e999`; range-check it
   yourself or use `readStrictDouble`. *(I-05)*
+- **`println("n =", n)` does not compile under C++23 with `using namespace
+  std;`** — it is ambiguous with `std::println` from `<print>`, which libc++
+  pulls in transitively. Only multi-argument calls with a string-like first
+  argument are affected; `println(n)` and `println(v)` are fine. Qualify the
+  call as `::println(...)`, drop the using-directive, or build with
+  `-std=c++20`. *(F-09)*
 
 ---
 

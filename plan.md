@@ -641,6 +641,50 @@ above 1e300 is accepted. `doubleCompare(1e301, 5e305, 1e-6)` is `true`. Affects
 Fix: use `std::isinf`/`std::isnan` (guarding the `-ffast-math` case that
 `__testlib_ensuresPreconditions` already rejects).
 
+### F-09 · `println` is ambiguous with C++23's `std::println` · measured
+`testlib.h:5555`, and the same shape at `5587`, `5597`, `5609`, `5623`, `5639`.
+C++23 added `std::println` in `<print>`. In a translation unit that says
+`using namespace std;` — near-universal in this domain — a multi-argument
+`println` whose first argument is string-like becomes ambiguous and **fails to
+compile**:
+
+```
+error: call to 'println' is ambiguous
+  note: candidate testlib.h:5555  println(const A &a, const B &b)
+  note: candidate <print>:373     println(format_string<_Args...>, _Args&&...)
+```
+
+Neither candidate wins because they split the arguments. On the first argument
+testlib is better (identity binding to `const char(&)[N]` beats the
+user-defined conversion to `basic_format_string`); on the second, `std` is
+better (`_Args&&` deduces `int&`, and binding an `int` lvalue to `int&` beats
+binding it to testlib's `const B&`). Neither is better for *every* argument, so
+overload resolution is ambiguous.
+
+**Measured scope** (g++ 15, `-std=c++23`, `<print>` visible): `println(n)`,
+`println("literal")`, `println(n, n)`, `println(v)` and the iterator-pair form
+are all fine. `println("a =", n)`, `println("a =", s)`, `println(s, n)` and
+every 3+ argument form with a string-like first argument are ambiguous. So the
+trigger is *two or more arguments with a string-like first argument*.
+
+**Why only macOS CI saw it:** libc++ pulls `<print>` in transitively, libstdc++
+does not (yet). Apple clang 17 on `macos-15`/`macos-26` failed every CI run;
+`macos-14`, all Linux compilers and MSVC passed. It is a latent break for
+libstdc++ users the moment that transitive include appears.
+
+**Worked around, not fixed:** the two files that tripped it
+(`tests/test-005_opts/files/test-{auto,suppress-auto}-ensure-no-unused-opts.cpp`)
+dropped an unnecessary `using namespace std;`. No other file in the repo uses
+the ambiguous form — verified by compiling all 88 `.cpp` files with
+`-include print` under `-std=c++23`. Users writing `using namespace std;` in
+their own generators are still exposed.
+
+**Fix:** take the arguments by forwarding reference (`A&&`, `B&&`, …) instead of
+`const A&`, so testlib ties on the trailing arguments and wins outright on the
+first. That touches all seven overloads and the `is_iterator<B>` dispatch would
+need a `decay` — a real change to a vendored header, and one that belongs
+upstream. Until then, document the collision.
+
 ### F-05 · `vtos` truncates at the first whitespace · traced
 `testlib.h:615-622`. The non-integral overload does `ss << t; ss >> s;`, so
 `vtos(std::string("a b"))` is `"a"` and any double is rendered at 6 significant

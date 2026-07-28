@@ -1,6 +1,8 @@
 #include "testlib.h"
 
-using namespace std;
+/* No "using namespace std;" on purpose: this file uses no std name, and under
+   C++23 the directive makes println("x =", n) ambiguous with std::println
+   from <print>, which libc++ pulls in transitively. See plan.md F-09. */
 
 int main(int argc, char** argv) {
     registerGen(argc, argv, 1);

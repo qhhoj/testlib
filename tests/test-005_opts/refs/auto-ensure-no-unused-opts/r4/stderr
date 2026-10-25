@@ -1,1 +1,1 @@
-FAIL Opts: unused key 'max-val'
+warning: Opts: unused key 'max-val' (call suppressEnsureNoUnusedOpts() to silence)

@@ -27,7 +27,7 @@
  * Copyright (c) 2005-2025
  */
 
-#define VERSION "0.9.52"
+#define VERSION "0.9.53"
 
 /*
  * Mike Mirzayanov
@@ -97,6 +97,17 @@
  *           was undefined behaviour. Counts must now be a whole number that
  *           fits in int. THIS IS A BEHAVIOUR BREAK for patterns using "{n,}",
  *           which must be given an explicit upper bound, e.g. "{3,100}".
+ *   0.9.53  The automatic unused-opts check now warns on stderr instead of
+ *           failing. It ran at exit, after the generator had written the whole
+ *           test, and failed from a destructor; it also fired wrongly on
+ *           has_opt(key), which never marked the key used, and on generators
+ *           that read every argument by index. has_opt now marks a present key
+ *           used, every read by key turns the check on, and the warning lists
+ *           every unused key. An explicit ensureNoUnusedOpts() call still fails,
+ *           now listing every unused key. Reading opts by index is deprecated:
+ *           the first read prints one warning per run and skips the automatic
+ *           check. THIS IS A BEHAVIOUR CHANGE: a generator given an unused key
+ *           now exits 0 with a warning instead of failing with exit 3.
  *
  * See plan.md in the repository root for the full audit and the remaining
  * known defects.
@@ -124,6 +135,12 @@
  */
 
 const char *latestFeatures[] = {
+        "Unused opts now produce a warning on stderr instead of a FAIL: the automatic check ran "
+                "at exit, after the whole test was written, and also fired on has_opt(key), which "
+                "never marked the key used. has_opt now marks a present key used, every read by "
+                "key turns the check on, and both the warning and an explicit ensureNoUnusedOpts() "
+                "(which still fails) list every unused key. Reading opts by index (opt<T>(1)) is "
+                "deprecated: it prints one warning per run and skips the automatic check",
         "Malformed pattern repetition counts now fail instead of silently weakening the "
                 "pattern: \"{3,}\" dropped its empty tail part and meant exactly 3 rather than "
                 "\"3 or more\", and sscanf(\"%d\") ignored trailing garbage, so \"{1O}\", "
@@ -165,7 +182,7 @@ const char *latestFeatures[] = {
         "Use syntax `int t = inf.readInt(1, 3, \"~t\");` to skip the lower bound check. Tildes can be used on either side or both: ~t, t~, ~t~",
         "Supported EJUDGE support in registerTestlibCmd",
         "Supported '--testMarkupFileName fn' and '--testCase tc/--testCaseFileName fn' for validators",
-        "Added opt defaults via opt<T>(key/index, default_val); check unused opts when using has_opt or default opt (turn off this check with suppressEnsureNoUnusedOpt()).",
+        "Added opt defaults via opt<T>(key/index, default_val); check unused opts when using has_opt or default opt (turn off this check with suppressEnsureNoUnusedOpts()).",
         "For checker added --group and --testset command line params (like for validator), use checker.group() or checker.testset() to get values",
         "Added quitpi(points_info, message) function to return with _points exit code 7 and given points_info",
         "rnd.partition(size, sum[, min_part=1]) returns random (unsorted) partition which is a representation of the given `sum` as a sum of `size` positive integers (or >=min_part if specified)",
@@ -5780,6 +5797,21 @@ bool __testlib_ensureNoUnusedOptsFlag = false;
 bool __testlib_ensureNoUnusedOptsSuppressed = false;
 
 /**
+ * Whether an opt was read by index in this run. Positional access is
+ * deprecated: the first read prints a warning, and the automatic no unused
+ * opts check is skipped, since reads by index cannot mark keys used.
+ */
+bool __testlib_optsReadByIndex = false;
+
+void __testlib_notePositionalOpt() {
+    if (!__testlib_optsReadByIndex) {
+        __testlib_optsReadByIndex = true;
+        std::fprintf(stderr, "warning: Opts: reading options by position (opt(index)) is deprecated;"
+                             " pass named options (-key value) and read them with opt(key)\n");
+    }
+}
+
+/**
  * Parse command line arguments into opts.
  * The results are stored into __testlib_argv and __testlib_opts.
  */
@@ -5788,6 +5820,7 @@ void prepareOpts(int argc, char *argv[]) {
         __testlib_fail("Opts: expected argc>=0 but found " + toString(argc));
     size_t n = static_cast<size_t>(argc); // NOLINT(hicpp-use-auto,modernize-use-auto)
     __testlib_opts = std::map<std::string, TestlibOpt>();
+    __testlib_optsReadByIndex = false;
     for (size_t index = 1; index < n; index += parseOpt(n, argv, index, __testlib_opts));
     __testlib_argv = std::vector<std::string>(n);
     for (size_t index = 0; index < n; index++)
@@ -5807,9 +5840,11 @@ std::string __testlib_indexToArgv(int index) {
 
 /**
  * An utility function to get the opt with a given key . This function
- * also print a readable message when no opts are found.
+ * also print a readable message when no opts are found. Every read by key
+ * turns on the automatic unused-opts check.
  */
 std::string __testlib_keyToOpts(const std::string &key) {
+    __testlib_ensureNoUnusedOptsFlag = true;
     auto it = __testlib_opts.find(key);
     if (it == __testlib_opts.end())
         __testlib_fail("Opts: unknown key '" + compress(key) + "'");
@@ -5967,15 +6002,20 @@ long double optValueToLongDouble(const std::string &s_) {
 }
 
 /**
- * Return true if there is an opt with a given key.
- * 
+ * Return true if there is an opt with a given key. Asking counts as reading
+ * it: a present key is marked used, as opt<bool>(key) would mark it.
+ *
  * By calling this function, automatic ensurement for no unused opts will be
  * done when the program is finalized. Call suppressEnsureNoUnusedOpts() to
  * turn it off.
  */
 bool has_opt(const std::string &key) {
     __testlib_ensureNoUnusedOptsFlag = true;
-    return __testlib_opts.count(key) != 0;
+    auto it = __testlib_opts.find(key);
+    if (it == __testlib_opts.end())
+        return false;
+    it->second.used = true;
+    return true;
 }
 
 /* About the following part for opt with 2 and 3 arguments.
@@ -6062,10 +6102,11 @@ bool opt(std::true_type /*is_integral*/, std::true_type /*is_unsigned*/, int ind
 }
 
 /**
- * Return the parsed argv by a given index.
+ * Return the parsed argv by a given index. Deprecated: prefer named opts.
  */
 template<typename T>
 T opt(int index) {
+    __testlib_notePositionalOpt();
     return opt<T>(std::is_integral<T>(), std::is_unsigned<T>(), index);
 }
 
@@ -6082,6 +6123,7 @@ std::string opt(int index) {
  */
 template<typename T>
 T opt(int index, const T &default_value) {
+    __testlib_notePositionalOpt(); // here too: the default path skips opt<T>(index)
     if (index >= int(__testlib_argv.size())) {
         return default_value;
     }
@@ -6508,27 +6550,52 @@ std::string opt(const std::string &key, const std::string &default_value) {
 }
 
 /**
+ * Describe every unused opt, in key order: "key 'a'" or "keys 'a', 'b'".
+ * Returns an empty string when all opts are used.
+ */
+std::string __testlib_unusedOptsDescription() {
+    std::string keys;
+    size_t count = 0;
+    for (const auto &opt: __testlib_opts) {
+        if (!opt.second.used) {
+            keys += (count++ == 0 ? "'" : ", '") + compress(opt.first) + "'";
+        }
+    }
+    if (count == 0)
+        return "";
+    return (count == 1 ? "key " : "keys ") + keys;
+}
+
+/**
  * Check if all opts are used. If not, __testlib_fail is called.
  * Should be used after calling all opt() function calls.
- * 
+ *
  * This function is useful when opt() with default_value for checking typos
  * in the opt's key.
  */
 void ensureNoUnusedOpts() {
-    for (const auto &opt: __testlib_opts) {
-        if (!opt.second.used) {
-            __testlib_fail(testlib_format_("Opts: unused key '%s'", compress(opt.first).c_str()));
-        }
-    }
+    std::string unused = __testlib_unusedOptsDescription();
+    if (!unused.empty())
+        __testlib_fail("Opts: unused " + unused);
 }
 
 void suppressEnsureNoUnusedOpts() {
     __testlib_ensureNoUnusedOptsSuppressed = true;
 }
 
+/**
+ * The automatic check only warns: it runs at exit, after the output is
+ * complete, so failing here would discard a valid test (and exit from a
+ * destructor). Call ensureNoUnusedOpts() explicitly to make unused opts fatal.
+ * A run that already quit with a failure has reported it; stay quiet then.
+ */
 void TestlibFinalizeGuard::autoEnsureNoUnusedOpts() {
-    if (__testlib_ensureNoUnusedOptsFlag && !__testlib_ensureNoUnusedOptsSuppressed) {
-        ensureNoUnusedOpts();
+    if (__testlib_ensureNoUnusedOptsFlag && !__testlib_ensureNoUnusedOptsSuppressed
+            && !__testlib_optsReadByIndex && __testlib_exitCode == 0) {
+        std::string unused = __testlib_unusedOptsDescription();
+        if (!unused.empty())
+            std::fprintf(stderr, "warning: Opts: unused %s (call suppressEnsureNoUnusedOpts() to silence)\n",
+                         unused.c_str());
     }
 }
 

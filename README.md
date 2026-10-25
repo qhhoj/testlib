@@ -7,7 +7,7 @@
 > maintained at [qhhoj/testlib](https://github.com/qhhoj/testlib) and carries
 > local changes, so it is **not** interchangeable with an upstream release.
 >
-> Forked at upstream **0.9.45**; this copy is **0.9.50**:
+> Forked at upstream **0.9.45**; this copy is **0.9.53**:
 >
 > | Version | Change |
 > | --- | --- |
@@ -16,6 +16,9 @@
 > | 0.9.48 | Version 2 also fixes command-line seeding: versions 0 and 1 read argument bytes as `char`, so a byte ≥ 0x80 seeds differently on x86 than on ARM and the same command line yields different tests per machine. |
 > | 0.9.49 | Fixed undefined behaviour in the option parser: a value with no digits in its mantissa, such as `-n=-e-5`, wrote past the start of a string. A bare sign is now rejected instead of silently parsing as `0`. |
 > | 0.9.50 | Fixed a heap buffer overflow in `InStream::skipChar()`, which never refilled the buffer or checked bounds. A checker skipping a participant-supplied number of characters read past the end of the 2 MB buffer, silently. |
+> | 0.9.51 | Fixed the end-of-input sentinel: `EOFC` was 255, a value a real byte can hold, so a `0xFF` byte was confused with end of input. `EOFC` is now `-1`, and `curChar()`, `nextChar()` and `readChar()` return `int` (a source-level break). |
+> | 0.9.52 | Malformed pattern repetition counts now fail instead of silently weakening the pattern: `{3,}` meant exactly 3, and `{1O}` meant `{1}`. `{n,}` needs an explicit upper bound such as `{3,100}`. |
+> | 0.9.53 | Unused options now give a warning on stderr instead of failing the generator after it had written the whole test. `has_opt(key)` counts as reading the key, and an explicit `ensureNoUnusedOpts()` still fails. Reading options by position (`opt<int>(1)`) is deprecated and prints one warning per run. |
 >
 > [`plan.md`](plan.md) is an audit of the library recording the remaining known
 > defects, each with a reproducer and a proposed fix. See [`docs/`](docs/) for

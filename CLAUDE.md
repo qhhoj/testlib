@@ -2,7 +2,7 @@
 
 ## What this repository is
 
-**testlib 0.9.52** — a single-header C++ library (`testlib.h`, ~6500 lines,
+**testlib 0.9.53** — a single-header C++ library (`testlib.h`, ~6500 lines,
 MIT) for preparing competitive programming problems: generators, validators,
 checkers, interactors and scorers.
 
@@ -11,8 +11,10 @@ This checkout is the fork `qhhoj/testlib`, forked from upstream
 scorer API, 0.9.47/0.9.48 add random generator version 2, 0.9.49 fixes the
 option parser, 0.9.50 fixes a heap overflow in `skipChar()`, 0.9.51 fixes the
 end-of-input sentinel (`EOFC` is now `-1`, and `curChar`/`nextChar`/`readChar`
-return `int`), and 0.9.52 makes malformed pattern repetition counts fail
-instead of silently meaning `{1}` (`{3,}` no longer means exactly 3).
+return `int`), 0.9.52 makes malformed pattern repetition counts fail
+instead of silently meaning `{1}` (`{3,}` no longer means exactly 3), and
+0.9.53 turns the automatic unused-option check into a warning and deprecates
+reading options by position.
 `plan.md` tracks what is fixed and what remains. Still treat `testlib.h` as vendored code —
 keep local patches small and isolated so rebasing onto upstream stays cheap,
 and prefer sending fixes upstream.
@@ -94,7 +96,7 @@ directory except `test-006`: set the environment yourself and run its
   generator in the world produces different tests — that is a compatibility
   break, not a test fix.
 - **Any user-visible library change** must bump `VERSION` (`testlib.h:30`) and
-  prepend an entry to `latestFeatures[]` (`testlib.h:117`). Note the fork's own
+  prepend an entry to `latestFeatures[]` (`testlib.h:137`). Note the fork's own
   changelog block sits just above `latestFeatures[]`; add the entry there too.
 - **Docs-only commits do not run CI** — `.github/workflows/ci.yml` has
   `paths-ignore: docs/**, LICENSE, read.me, README.md`.

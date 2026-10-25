@@ -1,0 +1,1 @@
+warning: Opts: reading options by position (opt(index)) is deprecated; pass named options (-key value) and read them with opt(key)

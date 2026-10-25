@@ -9,10 +9,6 @@ upstream one-page introduction; these documents go further.
 | [development-guide.md](development-guide.md) | Maintainers | Repository provenance, a map of `testlib.h`, the `tests/` harness, CI, and the checklist for changing the library. |
 | [examples/maxpos/](examples/maxpos/README.md) | Both | A complete runnable problem package — generator, validator, special checker, correct and wrong solutions, and a script that runs the whole pipeline. |
 | [../plan.md](../plan.md) | Maintainers | Audit of `testlib.h`: confirmed bugs, ambiguities and security issues, each with a reproducer and a fix, ranked by severity. Blocks are deleted as findings are fixed. |
-| [../GLOSSARY.md](../GLOSSARY.md) | Everyone | The project's vocabulary: test vs test case, the five roles, verdicts, random generator version vs testlib version, finding vs issue. |
-| [adr/](adr/) | Maintainers | Architecture decision records: vendored header, frozen random streams, fail-loudly patterns, the EOFC break, the pinned comparator header, `* binary`, pinned tests, the threat model. |
-| [../CODING_STANDARDS.md](../CODING_STANDARDS.md) | Maintainers | What a reviewer checks by judgement, and where the mechanical checks are documented. |
-| [agents/](agents/issue-tracker.md) | Agents | Configuration for the engineering skills: the issue tracker (GitHub Issues), triage label vocabulary, and how to consume domain docs (`GLOSSARY.md`, `docs/adr/`). |
 
 Start with the usage guide; it links into the example where a concrete
 demonstration helps.

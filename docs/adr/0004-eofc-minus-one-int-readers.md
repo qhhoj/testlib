@@ -1,3 +1,0 @@
-# End of input is -1, and the character readers return int
-
-Up to 0.9.50 the end-of-input sentinel `EOFC` was 255, a value a real byte can hold, so a 0xFF byte was confused with end of input in ways that depended on the platform (findings I-01 and I-10). In 0.9.51 we made `EOFC` equal to -1, made real bytes read as values from 0 to 255, and changed `InStream::curChar`, `nextChar` and `readChar` to return `int`. That is a source-level break we accepted deliberately: the alternative was to keep the old signatures and leave the sentinel ambiguous. Code that still stores the result in a `char` compiles, but brings the collision back.

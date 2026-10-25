@@ -119,16 +119,12 @@ directory except `test-006`: set the environment yourself and run its
 
 ### Issue tracker
 
-GitHub Issues on `qhhoj/testlib`, via the `gh` CLI; `plan.md` stays the audit log of `testlib.h` findings. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues on `qhhoj/testlib`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-The five default role labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+The five default triage labels, each label string equal to its role name. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root, seeded and kept current. Rejected requests are in `.out-of-scope/`. See `docs/agents/domain.md`.
-
-### Coding standards
-
-Review-time judgement rules, with pointers to the mechanical checks. See `CODING_STANDARDS.md`.
+Single-context. See `docs/agents/domain.md`.

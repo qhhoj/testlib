@@ -1,3 +1,0 @@
-# Pinned tests assert a finding's current, defective behaviour
-
-A finding in `plan.md` that is reproducible but not yet fixed gets a pinned test in `tests/test-004_use-test.h/tests/`. That test asserts the current, defective behaviour, rather than being skipped or marked as an expected failure. This keeps CI green while still detecting any change to the behaviour, intended or not. The fix flips the test to assert the correct behaviour and deletes the finding's block from `plan.md` in the same change. Findings whose reproducer is undefined behaviour are never pinned, because a test that invokes undefined behaviour pins a crash.

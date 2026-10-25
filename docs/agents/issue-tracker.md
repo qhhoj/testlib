@@ -14,12 +14,6 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
-**Relationship to `plan.md`:** `plan.md` is the living audit of `testlib.h` (one block per finding, deleted when fixed). A GitHub issue that implements a finding should cite its ID (e.g. `I-03`) in the title. Fixing it still means deleting the block from `plan.md` and flipping any `Pinned by:` test in the same change.
-
-**Local `gh` is 2.46**, older than the 2.94 that `gh issue create --parent` and `--add-sub-issue` need: use the `gh api` fallbacks this file gives for sub-issues and blocking.
-
-**Older design docs** live in `docs/superpowers/specs/` (e.g. the I-03 design). New specs are published as GitHub issues; when a skill looks for the spec behind a branch, check both.
-
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_

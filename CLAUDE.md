@@ -127,4 +127,8 @@ The five default role labels (`needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root, seeded and kept current. Rejected requests are in `.out-of-scope/`. See `docs/agents/domain.md`.
+
+### Coding standards
+
+Review-time judgement rules, with pointers to the mechanical checks. See `CODING_STANDARDS.md`.

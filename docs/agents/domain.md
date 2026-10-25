@@ -2,6 +2,8 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
+**This repo is single-context.** `GLOSSARY.md` and `docs/adr/` were seeded on 2026-10-25 from `CLAUDE.md`, `plan.md`, `docs/usage-guide.md` and `docs/development-guide.md`; keep them current from here on rather than re-seeding. Rejected feature requests live in `.out-of-scope/` (read by `/triage`), and review-time rules in `CODING_STANDARDS.md` (read by `/code-review`).
+
 ## Before exploring, read these
 
 - **`GLOSSARY.md`** at the repo root, or

@@ -1,0 +1,3 @@
+# Random streams are frozen; a fix ships as a new random generator version
+
+Every existing problem package on every judge regenerates its tests from the random stream it was built with, so the output of random generator versions 0, 1 and 2 must never change, and `tests/test-003_run-rnd` pins all three byte for byte. A defect in the stream is fixed by adding a new version that generators opt into with `registerGen(argc, argv, N)`, never by editing an existing one. Version 1 fixed version 0 this way, and version 2 fixed version 1 (findings R-01 and R-07). Version 2 is now frozen as well, so any further stream correction needs version 3. This is upstream's practice, which the fork keeps.

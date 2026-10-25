@@ -114,3 +114,17 @@ directory except `test-006`: set the environment yourself and run its
   `rnd` and testlib's `shuffle`.
 - Default exit codes: `_ok` 0, `_wa` 1, `_pe` 2, `_fail` 3, `_points` 7.
   `_dirt` and `_unexpected_eof` both surface as 2 by default.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `qhhoj/testlib`, via the `gh` CLI; `plan.md` stays the audit log of `testlib.h` findings. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default role labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.

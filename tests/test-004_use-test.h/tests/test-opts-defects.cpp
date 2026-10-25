@@ -1,34 +1,16 @@
 /*
  * Pins CURRENT (defective) command-line option behaviour.
  *
- * See plan.md: O-02 (has_opt arms the unused-opts check but never marks the
- * opt used), O-04 (-k10 parses three different ways), O-05 (an option
+ * See plan.md: O-04 (-k10 parses three different ways), O-05 (an option
  * expecting a value silently becomes boolean "true"), O-06 (opt<bool> defaults
  * silently where every other type fails).
  *
  * Those assertions describe bugs, not desired behaviour.
  *
- * opts_rejects_values_without_digits at the end is the opposite: it covers
- * O-01, which is FIXED, and asserts the desired result.
+ * The two tests at the end are the opposite and assert the desired result:
+ * opts_rejects_values_without_digits covers O-01 and opts_has_opt_marks_used
+ * covers O-02. Both are FIXED.
  */
-
-TEST(opts_has_opt_does_not_mark_used) {
-    /* O-02: the documented "is this flag present" idiom is self-defeating --
-       has_opt turns the check on and then fails it. Note we deliberately do
-       NOT suppress the check here; that is the whole point of the test. */
-    const char *args[] = {"gen", "-sorted"};
-    prepareOpts(sizeof(args) / sizeof(const char *), (char **) args);
-
-    ensure(has_opt("sorted"));
-
-    /* The opt was read, yet it is still reported as unused. */
-    ensure_exit(3, [](){ ensureNoUnusedOpts(); });
-
-    /* Reading it through opt<>() does mark it used. */
-    prepareOpts(sizeof(args) / sizeof(const char *), (char **) args);
-    ensure(opt<bool>("sorted"));
-    ensureNoUnusedOpts();
-}
 
 TEST(opts_single_char_key_form_is_context_dependent) {
     /* O-04: "-n10" means three different things depending on what follows. */
@@ -128,4 +110,25 @@ TEST(opts_rejects_values_without_digits) {
         prepareOpts(2, (char **) args);
         ensure(opt<double>("n") > 0.0149 && opt<double>("n") < 0.0151);
     }
+}
+
+TEST(opts_has_opt_marks_used) {
+    /* O-02, fixed: asking whether a flag is present counts as reading it, so
+       the documented "is this flag present" idiom passes the unused-opts check.
+       The explicit ensureNoUnusedOpts() ignores the suppression left by the
+       tests above, so each call below really checks. */
+    const char *args[] = {"gen", "-sorted"};
+    prepareOpts(sizeof(args) / sizeof(const char *), (char **) args);
+
+    ensure(has_opt("sorted"));
+    ensureNoUnusedOpts();
+
+    /* An absent key is reported absent and marks nothing. */
+    ensure(!has_opt("missing"));
+    ensureNoUnusedOpts();
+
+    /* Reading it through opt<>() does mark it used. */
+    prepareOpts(sizeof(args) / sizeof(const char *), (char **) args);
+    ensure(opt<bool>("sorted"));
+    ensureNoUnusedOpts();
 }

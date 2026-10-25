@@ -23,11 +23,11 @@ Running test 'instream_readline_swallows_bare_cr'                               
 Running test 'instream_readdouble_accepts_infinity'                                                 OK
 Running test 'doublecompare_treats_huge_finite_as_infinite'                                         OK
 Running test 'doublecompare_normal_cases'                                                           OK
-Running test 'opts_has_opt_does_not_mark_used'                                                      OK
 Running test 'opts_single_char_key_form_is_context_dependent'                                       OK
 Running test 'opts_missing_value_becomes_true'                                                      OK
 Running test 'opts_bool_defaults_silently'                                                          OK
 Running test 'opts_rejects_values_without_digits'                                                   OK
+Running test 'opts_has_opt_marks_used'                                                              OK
 Running test 'scorer_escape_roundtrip_is_lossless'                                                  OK
 Running test 'scorer_verdict_roundtrip'                                                             OK
 Running test 'scorer_testresult_roundtrip'                                                          OK

@@ -9,7 +9,7 @@ code, so they stay consistent with each other.
 
 > **Known drift: the cited lines run 40 to 80 lines low.** Measured against
 > 0.9.50, `lowerBitCount` sat at 851 where R-02 cites 813, the V-01 guard at
-> 2687 where V-01 cites 2647, and `has_opt` at 5877 where O-02 cites 5833 —
+> 2687 where V-01 cites 2647, and `has_opt` at 5877 where O-02 (fixed in 0.9.53) cited 5833 —
 > +38 to +44 across the entries sampled, in the same direction. That drift
 > predates 0.9.51 and was inherited from an earlier release. 0.9.52 then added
 > 39 lines: +13 to everything past the changelog header, and a further +26 to
@@ -27,6 +27,20 @@ so it is a compatibility surface too — its stream is now frozen.
 > **Version 2's output is settled. Do not change it again.** Both rnd fixes
 > landed before any package could be generated with it. Any further correction
 > to the random stream needs a version 3.
+
+**Fixed — 0.9.53:** O-02 and O-03, in the opts section, by making the
+automatic unused-opts check a warning (spec: qhhoj/testlib#5). `has_opt(key)`
+now marks a present key used (O-02). Reading by index is deprecated rather than
+tracked (O-03): the first read prints one warning per run and skips the
+automatic check, because the parser does not record which argument belongs to
+which key. Every read by key now turns the check on, the warning goes to stderr
+with exit code unaffected, and it lists every unused key. An explicit
+`ensureNoUnusedOpts()` still fails, also listing every key. Per-key tracking for
+reads by index stays with the opts grammar (Future work item 4).
+`tests/test-005_opts` covers it with three new generators; the O-02 pin in
+`test-opts-defects.cpp` is flipped to `opts_has_opt_marks_used`. 0.9.53 added
+69 lines: +17 to everything past the changelog header, and up to a further +52
+through the opts section.
 
 **Fixed — 0.9.52:** P-01 and P-02, both in `__pattern_scanCounts`.
 
@@ -286,54 +300,6 @@ allocation tracks real input. Change the out-of-range verdict from `_fail` to
 
 ---
 
-### O-02 · `has_opt` arms the unused-opts check but never marks the opt used · HIGH · measured
-
-**Where:** `testlib.h:5892-5896` (`has_opt`), `5738` (`__testlib_keyToOpts`,
-the only place `used` is set), `6451-6455` (`autoEnsureNoUnusedOpts`)
-
-**What:** `has_opt` sets `__testlib_ensureNoUnusedOptsFlag = true` and returns
-`__testlib_opts.count(key) != 0` — without touching `used`. So the very call
-that enables the check guarantees the check will fail.
-
-**Trigger:**
-```cpp
-registerGen(argc, argv, 1);
-if (has_opt("sorted")) { /* ... */ }     // ./gen -sorted
-```
-
-**Impact:** the generator writes its entire test to stdout, then dies at exit
-with `FAIL Opts: unused key 'sorted'`, exit 3 — leaving a plausible-looking but
-officially-failed test file behind (see **A-11**). The documented "is this flag
-present" idiom is self-defeating. Workaround today: `suppressEnsureNoUnusedOpts()`
-or a dummy `opt<bool>("sorted")`.
-
-**Pinned by:** `tests/test-004_use-test.h/tests/test-opts-defects.cpp`
-
-**Fix:** mark the opt used in `has_opt`, or split into `has_opt` (marks used) and
-a separate non-arming query. See also **O-03**, **O-06**.
-
----
-
-### O-03 · positional `opt(i)` never marks keys used · HIGH · reported
-
-**Where:** `testlib.h:5951-5957`, `6007-6010` (`__testlib_indexToArgv`)
-
-**What:** index-based access reads `__testlib_argv` and never touches
-`__testlib_opts`. If any code path also calls `has_opt` or `opt(key, default)`
-— which arms the auto-check — every positionally-consumed option is reported as
-unused.
-
-**Trigger:** `./gen -n 5 --mode fast` with
-`int n = opt<int>(2); bool f = opt<bool>("flag", false);` → `FAIL Opts: unused
-key 'n'` at exit, after the test was already emitted.
-
-**Impact:** mixing the two access styles is silently unsupported and fails late.
-
-**Fix:** mark the corresponding key used when an index resolves to one, or
-reject mixing the two styles explicitly and early.
-
----
-
 ### O-04 · `-k10` parses three different ways depending on what follows · HIGH · measured
 
 **Where:** `testlib.h:5659-5669` (`parseOpt`)
@@ -529,10 +495,9 @@ with `-` followed by a letter" is undocumented.
 
 ### O-06 · `opt<bool>(key)` alone defaults silently · measured
 `testlib.h:6050-6052`. `opt<int>("x")` on a missing key FAILs with
-`Opts: unknown key 'x'`; `opt<bool>("x")` silently returns `false`. It also
-calls `has_opt`, so it arms the global unused-opts check as a **type-dependent
-side effect** — a single `opt<bool>` can make an unrelated typo fatal at exit
-where `opt<int>` would not. **Pinned by:** `test-opts-defects.cpp`.
+`Opts: unknown key 'x'`; `opt<bool>("x")` silently returns `false`. (Its
+type-dependent arming of the unused-opts check is gone since 0.9.53, when every
+read by key began to turn the check on.) **Pinned by:** `test-opts-defects.cpp`.
 
 ### O-07 · `isalpha` on a possibly-negative `char` · reported
 `testlib.h:5609`, `5612`. Passing a negative value to `isalpha` is UB — only
@@ -608,6 +573,8 @@ from a `noexcept` destructor → guaranteed `std::terminate`.
 Fix: an explicit `__testlib_finalize()` called at the end of each `register*`
 program's flow, with the destructor kept only as a diagnostic fallback that
 never exits — the pattern `registerScorer` already uses since 0.9.46.
+Since 0.9.53 the unused-opts check no longer fails from the destructor; the
+other `__testlib_fail` calls in `~TestlibFinalizeGuard` remain.
 
 ### Q-03 · `registerTestlib(int, ...)` crashes on call · traced
 `testlib.h:5068` sets `argv[0] = NULL`, then `registerTestlibCmd` constructs
@@ -766,7 +733,8 @@ unwritten result file.
 ### A-11 · the guard fires after all output is produced · traced
 `tests/test-005_no-register/refs/r1` shows exit code 3 alongside a complete,
 valid-looking test on stdout. Any pipeline that trusts the file rather than the
-exit code picks up an artifact from a failed run. Compounds **O-02**.
+exit code picks up an artifact from a failed run. The unused-opts check no
+longer adds to this: since 0.9.53 it warns instead of failing.
 
 ---
 
@@ -872,8 +840,9 @@ Beyond fixing the individual findings:
 3. **An explicit `__testlib_finalize()`** instead of destructor-driven
    finalisation — structurally removes S-01, S-02 and Q-02 rather than patching
    each.
-4. **A statable opts grammar** with a `--` terminator, uniform `used` tracking,
-   and consistent missing-key behaviour across types (O-02, O-03, O-04, O-06).
+4. **A statable opts grammar** with a `--` terminator, consistent missing-key
+   behaviour across types (O-04, O-06), and per-key `used` tracking for reads
+   by index, which 0.9.53 deprecated instead of tracking.
 5. **Fuzz `InStream`** against hostile participant output — most of the `I-*`
    findings are the kind a fuzzer surfaces in minutes.
 6. **Build the samples with `-Wformat-security`** in CI to catch F-06-class

@@ -17,15 +17,15 @@ read the [usage guide](usage-guide.md) instead.
 
 ## 1. What this repository is
 
-- **testlib 0.9.52**, MIT licensed, copyright Mike Mirzayanov.
+- **testlib 0.9.53**, MIT licensed, copyright Mike Mirzayanov.
 - Upstream: `https://github.com/MikeMirzayanov/testlib`. This checkout's
   `origin` is the fork `https://github.com/qhhoj/testlib.git`.
 - Forked from upstream at `1e4e8a2` (0.9.45), 457 commits back to 2008-09-14.
   **This fork now diverges:** 0.9.46 fixes the scorer API, 0.9.47/0.9.48 add
   random generator version 2, 0.9.49 fixes the option parser, 0.9.50
   fixes a heap overflow in skipChar(), 0.9.51 fixes the end-of-input
-  sentinel, and 0.9.52 makes malformed pattern repetition counts fail loudly
-  — see `plan.md`.
+  sentinel, 0.9.52 makes malformed pattern repetition counts fail loudly,
+  and 0.9.53 turns the unused-option check into a warning — see `plan.md`.
 - The library is used by Codeforces, the Russian National Olympiad in
   Informatics, and ICPC regionals; Polygon (the problem-preparation system)
   is built around it.
@@ -70,38 +70,38 @@ including markdown. Do not "fix" this.
 
 ## 3. Anatomy of `testlib.h`
 
-Approximate map (line numbers as of 0.9.52):
+Approximate map (line numbers as of 0.9.53):
 
 | Lines | Contents |
 | --- | --- |
 | 30 | `#define VERSION` |
-| 117+ | `latestFeatures[]` — the changelog, newest first |
-| 320–385 | Exit-code macros (`OK_EXIT_CODE`, `WA_EXIT_CODE`, …) with `EJUDGE` / `CONTESTER` / `TESTSYS` variants |
-| 404–435 | 16 MB `__testlib_format_buffer`, `FMT_TO_RESULT`, `__TESTLIB_MAX_TEST_CASE`, test-case globals |
-| 502–735 | `upperCase`/`lowerCase`, `doubleCompare`, `doubleDelta`, `vtos`, `toString`, `toHumanReadableString` |
-| 801, 1440–1730 | `class pattern` — declaration, then implementation |
-| 837–1435 | `class random_t` — the whole `rnd` API, and its static constants |
-| 1766–1815 | `TMode`, `TResult`, `TTestlibMode`, `_pc()`, `outcomes[]` |
-| 1842–2162 | Input readers: `StringInputStreamReader`, `FileInputStreamReader`, `BufferedFileInputStreamReader` |
-| 2168–2548 | `struct InStream` |
-| 2552–2554 | `InStream inf, ouf, ans;` |
-| 2565–2948 | `ValidatorBoundsHit`, `ConstantBound(s)`, `class Validator` (2613), global `validator` |
-| 2951–3003 | `TestlibFinalizeGuard` |
-| 3059–3088 | `setTestCase`, `unsetTestCase`, `resultExitCode` (3081) |
-| 3227–3393 | `InStream::quit` / `quitf` / `quitif` / `quits` — verdict rewriting and the dirt check |
-| 4616–4730 | Global `quit`, `quitp`, `quitpi`, `quitf`, `__testlib_help` (4719) |
-| 4740 | `__testlib_ensuresPreconditions()` |
-| 4788–5105 | `registerGen`, `registerInteraction`, `registerValidation`, `registerTestlibCmd`, `registerTestlib` |
-| 4999 | `class Checker`, global `checker` |
-| 5130–5160 | `__testlib_ensure`, `ensure` / `ensure_ext` macros, `ensuref`, `__testlib_fail`, `setName` (5152) |
-| 5165–5215 | `shuffle`, and the poisoned `random_shuffle` / `rand` / `srand` |
-| 5219–5260 | `startTest`, `compress`, `englishEnding`, `join` |
-| 5357–5410 | `expectedButFound` and its specializations |
-| 5481–5590 | The `println` family |
-| 5623–6115 | Command-line options: `TestlibOpt`, `parseOpt`, `prepareOpts`, `has_opt`, `opt<T>` |
-| 6116–6440 | Scorer: `TestResultVerdict`, `TestResult`, serialization, `readTestResults`, `registerScorer` (6424) |
-| 6452–6500 | `opt<T>(key, default)`, `ensureNoUnusedOpts`, `suppressEnsureNoUnusedOpts` |
-| 6502–6543 | `testlib_format_`, `format()` (with a `std::format` path under C++20) |
+| 137+ | `latestFeatures[]` — the changelog, newest first |
+| 352–410 | Exit-code macros (`OK_EXIT_CODE`, `WA_EXIT_CODE`, …) with `EJUDGE` / `CONTESTER` / `TESTSYS` variants |
+| 436–467 | 16 MB `__testlib_format_buffer`, `FMT_TO_RESULT`, `__TESTLIB_MAX_TEST_CASE`, test-case globals, `unsetTestCase` |
+| 534–760 | `upperCase`/`lowerCase`, `doubleCompare`, `doubleDelta`, `vtos`, `toString`, `toHumanReadableString` |
+| 833, 1471–1820 | `class pattern` — declaration, then implementation |
+| 869–1468 | `class random_t` — the whole `rnd` API, and its static constants |
+| 1822–1867 | `TMode`, `TResult`, `TTestlibMode`, `_pc()`, `outcomes[]` |
+| 1869–2222 | Input readers: `StringInputStreamReader`, `FileInputStreamReader`, `BufferedFileInputStreamReader` |
+| 2224–2606 | `struct InStream` |
+| 2608–2610 | `InStream inf, ouf, ans;` |
+| 2621–3001 | `ValidatorBoundsHit`, `ConstantBound(s)`, `class Validator` (2669), global `validator` |
+| 3007–3045 | `TestlibFinalizeGuard` |
+| 3115–3159 | `setTestCase`, `resultExitCode` (3137) |
+| 3283–3443 | `InStream::quit` / `quitf` / `quitif` / `quits` — verdict rewriting and the dirt check |
+| 4672–4794 | Global `quit`, `quitp`, `quitpi`, `quitf`, `__testlib_help` (4775) |
+| 4796 | `__testlib_ensuresPreconditions()` |
+| 4844–5171 | `registerGen`, `registerInteraction`, `registerValidation`, `registerTestlibCmd`, `registerTestlib` |
+| 5055 | `class Checker`, global `checker` |
+| 5173–5211 | `__testlib_ensure`, `ensure` / `ensure_ext` macros, `ensuref`, `__testlib_fail`, `setName` (5208) |
+| 5220–5273 | `shuffle`, and the poisoned `random_shuffle` / `rand` / `srand` |
+| 5275–5320 | `startTest`, `compress`, `englishEnding`, `join` |
+| 5413–5490 | `expectedButFound` and its specializations |
+| 5494–5671 | The `println` family |
+| 5679–6198 | Command-line options: `TestlibOpt`, `parseOpt`, `prepareOpts`, `has_opt`, `opt<T>` |
+| 6199–6520 | Scorer: `TestResultVerdict`, `TestResult`, serialization, `readTestResults`, `registerScorer` (6505) |
+| 6532–6604 | `opt<T>(key, default)`, `ensureNoUnusedOpts`, `suppressEnsureNoUnusedOpts`, `autoEnsureNoUnusedOpts` |
+| 6606–6646 | `testlib_format_`, `format()` (with a `std::format` path under C++20) |
 
 **Regenerate this table rather than shifting its numbers by hand.** It drifted
 badly across several edits because each change nudged the numbers mechanically
@@ -116,7 +116,7 @@ Two behaviours worth knowing before you change anything in the quit path:
   `_partially`, and is skipped in interactor mode.
 
 **Rule for any user-visible change:** bump `VERSION` (line 30) and prepend a
-one-line entry to `latestFeatures[]` (line 117). That array is the only
+one-line entry to `latestFeatures[]` (line 137). That array is the only
 changelog the project has.
 
 ## 4. The test harness
@@ -383,4 +383,4 @@ Things that are load-bearing and easy to break by accident:
 - Keep example sources compiling under the repo's own flags
   (`-std=c++17 -Wpedantic -Werror -O2 -I<repo-root>`).
 - Cite `file:line` for claims about `testlib.h`, and verify them — the line
-  numbers here are for 0.9.52 and will drift.
+  numbers here are for 0.9.53 and will drift.

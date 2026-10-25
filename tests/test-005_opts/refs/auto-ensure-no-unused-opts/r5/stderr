@@ -1,1 +1,1 @@
-FAIL Opts: unused key 'min-length'
+warning: Opts: unused key 'min-length' (call suppressEnsureNoUnusedOpts() to silence)

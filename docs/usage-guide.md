@@ -3,7 +3,7 @@
 How to use testlib to prepare a competitive programming problem: generators,
 validators, checkers, interactors and scorers.
 
-This guide describes **testlib 0.9.52** as vendored in this repository
+This guide describes **testlib 0.9.53** as vendored in this repository
 (`testlib.h`, single header, MIT). Line references point at that file.
 
 - [1. The pieces of a problem package](#1-the-pieces-of-a-problem-package)
@@ -72,7 +72,7 @@ g++ -std=c++17 -O2 -I/path/to/testlib mygen.cpp -o mygen
 - The repo's own test suite compiles every sample with `-Wpedantic -Werror -O2`
   (`tests/scripts/compile`). Use the same flags for anything you add here.
 - **Never build with `-ffast-math`.** `__testlib_ensuresPreconditions()`
-  (`testlib.h:4642`) detects it via a runtime NaN check and aborts, because
+  (`testlib.h:4796`) detects it via a runtime NaN check and aborts, because
   `doubleCompare` relies on real IEEE NaN semantics. It also static-asserts
   `sizeof(int) == 4`, `sizeof(long long) == 8`, `sizeof(double) == 8`.
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
   different arguments (`gen 1`, `gen 2`, …), not with a loop inside.
 - **Never** call `srand`, `time(0)`, `std::random_device`, or seed anything
   yourself. `rand()`, `srand()` and `std::random_shuffle` are deliberately
-  poisoned (`testlib.h:5078`, `5095`, `5113`) — using them is a compile error
+  poisoned (`testlib.h:5232`, `5249`, `5267`) — using them is a compile error
   under GCC and a `_fail` otherwise.
 
 The third argument is the random-generator version. **Use `2` for new
@@ -195,20 +195,31 @@ std::string s = join(v.begin(), v.end(), ',');
 
 ### Command-line options
 
-`registerGen` calls `prepareOpts` for you. Two styles:
+`registerGen` calls `prepareOpts` for you. Read options by name:
 
 ```cpp
-int n = opt<int>(1);              // positional: first non-option argument
-int t = opt<int>(2);
-
 int  cnt  = opt<int>("test-count");            // required named option
 int  minN = opt<int>("min-n", 1);              // named with default
 bool tree = opt<bool>("tree-only", false);
 std::string mode = opt("mode", "random");
-if (has_opt("sorted")) { /* ... */ }
+if (has_opt("sorted")) { /* ... */ }        // counts as reading "sorted"
 ```
 
-Accepted argument forms (`testlib.h:5559`):
+**Reading by position is deprecated** (since 0.9.53). `opt<int>(1)` is the raw
+`argv[1]`, not "the first non-option argument": in `./gen -n 5`, `opt<int>(2)`
+is `5`. It still works and returns exactly what it always did, but the first
+positional read in a run prints one warning to stderr:
+
+```
+warning: Opts: reading options by position (opt(index)) is deprecated; pass named options (-key value) and read them with opt(key)
+```
+
+and the run skips the automatic unused-option check below, because a read by
+position cannot tell which key it belongs to. Existing generators can keep
+their command lines; switching a generator to named options changes its
+command line, and therefore its seed and its tests.
+
+Accepted argument forms (`testlib.h:5716`):
 
 | Form | Example |
 | --- | --- |
@@ -220,12 +231,24 @@ Accepted argument forms (`testlib.h:5559`):
 Keys must start with a letter; `---key` is not an option. `bool` accepts
 `true`/`false`/`1`/`0`.
 
-**Typo protection:** calling `has_opt(...)` or any `opt(key, default)` overload
-switches on an automatic `ensureNoUnusedOpts()` at program exit, which
-`_fail`s if you passed an option the generator never read. That turns
-`-min-vaule 5` from a silent no-op into a loud error. Turn it off with
-`suppressEnsureNoUnusedOpts()` if you genuinely pass extra arguments (for
-example, arguments used only to vary the seed).
+**Typo protection:** any read by name (`opt(key)`, `opt(key, default)` or
+`has_opt(key)`) switches on an automatic check at program exit that warns about
+every option you passed but the generator never read. `has_opt` on a present
+key counts as reading it. The warning goes to stderr and does not change the
+exit code, so `-min-vaule 5` still produces the test, now with:
+
+```
+warning: Opts: unused key 'min-vaule' (call suppressEnsureNoUnusedOpts() to silence)
+```
+
+To make unused options fatal, call `ensureNoUnusedOpts()` yourself after the
+last read: it fails with `_fail` (exit 3) and lists every unused key. Silence
+the automatic warning with `suppressEnsureNoUnusedOpts()` if you genuinely pass
+extra arguments (for example, arguments used only to vary the seed). A run
+that has already quit with a failure (an `ensuref`, an unknown key, an explicit
+`ensureNoUnusedOpts()`) prints no warning on top of its `FAIL`. Before
+0.9.53 the automatic check failed instead of warning, after the whole test had
+been written.
 
 ### Multi-file generators
 
@@ -662,7 +685,7 @@ before `main` returns.
 
 A small regex-like language used by `rnd.next(pattern)` (generate a matching
 string) and by every `read*` overload that takes a pattern (validate a
-string). Implemented in `class pattern` (`testlib.h:738`, `1377-1660`).
+string). Implemented in `class pattern` (`testlib.h:833`, `1471-1820`).
 
 | Syntax | Meaning |
 | --- | --- |
@@ -748,7 +771,7 @@ Default process exit codes and messages:
 | `_wa` | `wrong answer ` | 1 | |
 | `_pe` | `wrong output format ` | 2 | |
 | `_fail` | `FAIL ` | 3 | jury/package error, never the participant's fault |
-| `_dirt` | `wrong output format ` | **2** | rewritten to `_pe` at `testlib.h:3218`; `DIRT_EXIT_CODE` (4) is not used on this path |
+| `_dirt` | `wrong output format ` | **2** | rewritten to `_pe` at `testlib.h:3355`; `DIRT_EXIT_CODE` (4) is not used on this path |
 | `_points` | `points ` | 7 | via `quitp` / `quitpi` |
 | `_unexpected_eof` | `wrong output format ` | **2** | becomes 8 only with `-DENABLE_UNEXPECTED_EOF` |
 | `_pc(x)` | `partially correct (x) ` | `PC_BASE_EXIT_CODE + x` (0 + x by default, 50 + x under `-DTESTSYS`) | |
@@ -880,8 +903,9 @@ problem setter:
   [§8](#8-patterns). *(P-03, I-06, A-01, A-02)*
 - **`{3,}` and malformed counts now `_fail` instead of being accepted.**
   Changed in 0.9.52; `{3,}` used to mean exactly 3. *(P-01, P-02)*
-- **`if (has_opt("flag"))` makes your generator fail at exit** with
-  `Opts: unused key`. Use `opt<bool>("flag", false)` instead. *(O-02)*
+- **Unused options only warn by default** (since 0.9.53). A typo'd key prints
+  a warning on stderr and the generator exits 0 with the default value. Call
+  `ensureNoUnusedOpts()` explicitly if a typo must fail the run.
 - **`doubleCompare` accepts anything above 1e300** as equal to any other value
   above 1e300. *(F-03)*
 - **`readLine()` silently drops a bare CR**, so `ab\rcd` and `abcd` compare

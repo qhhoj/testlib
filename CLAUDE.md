@@ -2,19 +2,18 @@
 
 ## What this repository is
 
-**testlib 0.9.53** — a single-header C++ library (`testlib.h`, ~6500 lines,
+**testlib** — a single-header C++ library (`testlib.h`, ~6500 lines,
 MIT) for preparing competitive programming problems: generators, validators,
 checkers, interactors and scorers.
 
-This checkout is the fork `qhhoj/testlib`, forked from upstream
-`MikeMirzayanov/testlib` at 0.9.45 and **now diverging**: 0.9.46 repairs the
-scorer API, 0.9.47/0.9.48 add random generator version 2, 0.9.49 fixes the
-option parser, 0.9.50 fixes a heap overflow in `skipChar()`, 0.9.51 fixes the
-end-of-input sentinel (`EOFC` is now `-1`, and `curChar`/`nextChar`/`readChar`
-return `int`), 0.9.52 makes malformed pattern repetition counts fail
-instead of silently meaning `{1}` (`{3,}` no longer means exactly 3), and
-0.9.53 turns the automatic unused-option check into a warning and deprecates
-reading options by position.
+This checkout is the fork `qhhoj/testlib` of upstream `MikeMirzayanov/testlib`,
+forked at 0.9.45. The current version is `VERSION` (`testlib.h:30`); the fork's
+changes are listed in the changelog block near the top of `testlib.h`. Where it
+differs from upstream: the scorer API works, `registerGen(argc, argv, 2)` is a
+third random generator version, `EOFC` is `-1` and `curChar`/`nextChar`/`readChar`
+return `int`, a malformed pattern repetition count fails (`{3,}` is not "exactly
+3"), an unused option is a warning, and reading options by position is
+deprecated.
 `plan.md` tracks what is fixed and what remains. Still treat `testlib.h` as vendored code —
 keep local patches small and isolated so rebasing onto upstream stays cheap,
 and prefer sending fixes upstream.
@@ -43,7 +42,7 @@ checkers/        21 stock checkers (wcmp, ncmp, rcmp6, yesno, …), also samples
 validators/      8 sample validators
 generators/      11 sample generators
 interactors/     1 sample interactor
-tests/           bash test harness + 10 test directories
+tests/           bash test harness + one test-* directory per suite
 docs/            guides and worked examples
 ```
 
@@ -52,7 +51,7 @@ docs/            guides and worked examples
 There is no build system. No `Makefile`; `CMakeLists.txt` is gitignored.
 
 ```sh
-g++ -std=c++17 -O2 -I/home/lam_n/Projects/testlib file.cpp -o file
+g++ -std=c++17 -O2 -I/path/to/this/testlib/checkout file.cpp -o file
 ```
 
 The repo's own harness compiles with `-Wpedantic -Werror -O2`. Match it.
@@ -72,7 +71,7 @@ Arguments are free-form: compiler (`g++`/`clang++`/`msvc`), standard
 
 **`run.sh` refuses to start without a JRE** — it runs `java -version` up front
 for `test-006_interactors`, unconditionally, even when you filter to an
-unrelated test. There is no JRE on this machine. Workaround for any test
+unrelated test. Java checks need a JRE on the machine where they run. Workaround for any test
 directory except `test-006`: set the environment yourself and run its
 `run.sh` directly — see "The test harness" in `docs/development-guide.md`.
 

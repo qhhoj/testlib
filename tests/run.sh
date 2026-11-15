@@ -168,7 +168,9 @@ if [[ "$machine" == "Windows" && ("$ARGS_CPP" == "" || "$ARGS_CPP" == "msvc") ]]
 
   for vs_release in "${VS_RELEASES[@]}"; do
     for program_files in "${PROGRAM_FILES[@]}"; do
-      for ((version = 2000; version <= 2100; version++)); do
+      # Visual Studio folders are named by year (2022) or by major version (18 = VS 2026 on windows-2025).
+      for version_dir in "$program_files"/Microsoft\ Visual\ Studio/*/; do
+        version=$(basename "$version_dir")
         vs_dir="$program_files\\Microsoft Visual Studio\\$version\\$vs_release\\VC\\Auxiliary\\Build"
         if [[ -d $vs_dir ]]; then
           for bits in 32 64; do
